@@ -135,7 +135,7 @@ An example samplesheet is provided in `assets/samplesheet_example.csv`.
 
 | Parameter        | Description                           | Type     | Default                            | Required |
 | ---------------- | ------------------------------------- | -------- | ---------------------------------- | -------- |
-| `targets_bed`    | BED file with target regions for VC   | `string` |                                    |          |
+| `targets_bed`    | BED file with target regions for variant calling | `string` |                                    |          |
 | `adapter_fasta`  | FASTA file with adapter sequences     | `string` | `$projectDir/assets/adapters.fa`   |          |
 
 ### Resource Limits
