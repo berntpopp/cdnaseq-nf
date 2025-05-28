@@ -38,25 +38,25 @@ Before running the pipeline, you need to prepare reference files:
 ### Using the Reference Preparation Script
 
 ```bash
-# Download GRCh38 references and create indices
+# Download hg38 references and create indices
 python bin/prepare_references.py \\
-    --genome_build GRCh38 \\
+    --genome_build hg38 \\
     --output_dir /path/to/references \\
-    --download \\
-    --index_fasta \\
-    --create_dict \\
-    --star_index \\
-    --threads 8
+    --gencode_version_hg38 45 \\
+    --star_threads 8
 
-# For GRCh37
+# For hg19
 python bin/prepare_references.py \\
-    --genome_build GRCh37 \\
+    --genome_build hg19 \\
     --output_dir /path/to/references \\
-    --download \\
-    --index_fasta \\
-    --create_dict \\
-    --star_index \\
-    --threads 8
+    --gencode_version_hg19 19 \\
+    --star_threads 8
+
+# Skip STAR index building if desired
+python bin/prepare_references.py \\
+    --genome_build hg38 \\
+    --output_dir /path/to/references \\
+    --skip_star_index
 ```
 
 ### Manual Reference Preparation

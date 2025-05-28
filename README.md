@@ -52,14 +52,25 @@ The pipeline performs:
 4. Prepare reference files:
 
    ```bash
-   # Download and prepare reference files
+   # Download and prepare reference files for hg38
    python bin/prepare_references.py \\
-       --genome_build GRCh38 \\
+       --genome_build hg38 \\
        --output_dir /path/to/references \\
-       --download \\
-       --index_fasta \\
-       --create_dict \\
-       --star_index
+       --gencode_version_hg38 45 \\
+       --star_threads 8
+
+   # Or for hg19
+   python bin/prepare_references.py \\
+       --genome_build hg19 \\
+       --output_dir /path/to/references \\
+       --gencode_version_hg19 19 \\
+       --star_threads 8
+
+   # Skip STAR index building if desired
+   python bin/prepare_references.py \\
+       --genome_build hg38 \\
+       --output_dir /path/to/references \\
+       --skip_star_index
    ```
 
 5. Run the pipeline:
