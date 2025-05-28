@@ -1,0 +1,196 @@
+# Nextflow specific
+.nextflow/
+.nextflow.log*
+work/
+results/
+test_results/
+*.html
+*.svg
+timeline.html
+report.html
+trace.txt
+dag.dot
+
+# Pipeline outputs (adjust based on your output directory structure)
+output/
+outputs/
+out/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pyc
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+
+# Conda
+conda-meta/
+.conda-env
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Docker
+.dockerignore
+
+# Singularity
+*.sif
+*.simg
+
+# R (if any R scripts are added)
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# Large data files (adjust patterns as needed)
+*.fastq
+*.fastq.gz
+*.fq
+*.fq.gz
+*.bam
+*.sam
+*.vcf
+*.vcf.gz
+*.bed
+*.gtf
+*.gff
+*.fa
+*.fasta
+*.fna
+*.fa.gz
+*.fasta.gz
+
+# Reference data directories (uncomment if you want to ignore reference files)
+# references/
+# genomes/
+# indices/
+
+# Log files
+*.log
+logs/
+log/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Configuration files that might contain sensitive information
+# (uncomment specific files as needed)
+# config.yaml
+# secrets.yaml
+# .env.local
+# .env.production
+
+# Test data (uncomment if you want to exclude test datasets)
+# test_data/
+# testdata/
+
+# Documentation build outputs
+docs/_build/
+docs/site/
+
+# Node.js (if any JavaScript tools are used)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Package files
+*.deb
+*.rpm
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+*.csr
+
+# Slurm job files
+*.out
+*.err
+slurm-*.out
+
+# Tower/Seqera Platform
+tower.yml
+.tower
+
+# nf-core specific (if adapting to nf-core standards)
+.nf-core.yml
+
+# Custom additions for this pipeline
+# Add any project-specific files or directories to ignore below
+custom_configs/
+private_data/
+local_references/
