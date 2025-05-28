@@ -163,6 +163,8 @@ process STAR_ALIGN_P2 {
     path(index)
     path(gtf)
     path(sj_filtered)
+    path(vcf_optional)
+    path(vcf_index_optional)
 
     output:
     tuple val(meta), path("*.Aligned.sortedByCoord.out.bam"), emit: bam_sorted
@@ -184,6 +186,7 @@ process STAR_ALIGN_P2 {
     def compression_cmd = reads[0].toString().endsWith('.gz') ? '--readFilesCommand zcat' : ''
     def memory = task.memory ? "--limitBAMsortRAM ${task.memory.toBytes() - 100000000}" : ""
     def sj_cmd = sj_filtered ? "--sjdbFileChrStartEnd $sj_filtered" : ""
+    def vcf_cmd = vcf_optional ? "--varVCFfile $vcf_optional" : ""
     
     """
     STAR \\
@@ -194,6 +197,7 @@ process STAR_ALIGN_P2 {
         --sjdbGTFfile $gtf \\
         $sj_cmd \\
         $compression_cmd \\
+        $vcf_cmd \\
         $memory \\
         $args
 

@@ -183,20 +183,38 @@ workflow CDNASEQ {
     //
     // STAR Index Creation
     //
+    ch_empty_sj_file = Channel.empty()
+    
     STAR_INDEX (
         reference_fasta,
-        reference_gtf
+        reference_gtf,
+        params.sjdb_overhang,
+        "standard_ref_index",
+        ch_empty_sj_file
     )
-    ch_star_index = STAR_INDEX.out.index
+    ch_star_index_std = STAR_INDEX.out.index
     ch_versions = ch_versions.mix(STAR_INDEX.out.versions.first())
 
     //
     // STAR First Pass Alignment - Reference
     //
+    // Join trimmed reads with VCF information
+    ch_trimmed_reads
+        .join(
+            ch_input.map { meta, reads, vcf -> 
+                def vcf_index = vcf ? file(vcf.toString() + ".tbi", checkIfExists: false) : null
+                return [meta.id, vcf, vcf_index]
+            }, 
+            by: [0]
+        )
+        .map { meta, reads, vcf, vcf_index -> [meta, reads, vcf ?: [], vcf_index ?: []] }
+        .set { ch_reads_with_vcf_p1_ref }
+
     STAR_ALIGN_P1_REF (
-        ch_trimmed_reads,
-        ch_star_index,
-        reference_gtf
+        ch_reads_with_vcf_p1_ref.map { meta, reads, vcf, vcf_index -> [meta, reads] },
+        ch_star_index_std,
+        ch_reads_with_vcf_p1_ref.map { meta, reads, vcf, vcf_index -> vcf },
+        ch_reads_with_vcf_p1_ref.map { meta, reads, vcf, vcf_index -> vcf_index }
     )
     ch_versions = ch_versions.mix(STAR_ALIGN_P1_REF.out.versions.first())
 
@@ -211,22 +229,29 @@ workflow CDNASEQ {
 
         STAR_INDEX.alias('STAR_INDEX_MUT') (
             CREATE_MUT_REF_FASTA.out.fasta,
-            reference_gtf
+            reference_gtf,
+            params.sjdb_overhang,
+            CREATE_MUT_REF_FASTA.out.fasta.map { meta, fasta -> "${meta.patient_id}_mut_index" },
+            ch_empty_sj_file
         )
-        ch_star_index_mut = STAR_INDEX.alias('STAR_INDEX_MUT').out.index
+        ch_star_indices_mut = STAR_INDEX.alias('STAR_INDEX_MUT').out.index
 
         // Align to mutated reference - only for samples with VCF
         ch_trimmed_reads
             .join(ch_input.map { meta, reads, vcf -> [meta.id, vcf] }, by: [0])
             .filter { meta, reads, vcf -> vcf != null }
-            .map { meta, reads, vcf -> [meta, reads] }
-            .combine(ch_star_index_mut)
+            .map { meta, reads, vcf -> 
+                def vcf_index = file(vcf.toString() + ".tbi", checkIfExists: false)
+                return [meta, reads, vcf, vcf_index]
+            }
+            .combine(ch_star_indices_mut)
             .set { ch_reads_mut_index }
 
         STAR_ALIGN_P1_MUT (
-            ch_reads_mut_index.map { meta, reads, index -> [meta, reads] },
-            ch_reads_mut_index.map { meta, reads, index -> index },
-            reference_gtf
+            ch_reads_mut_index.map { meta, reads, vcf, vcf_index, index -> [meta, reads] },
+            ch_reads_mut_index.map { meta, reads, vcf, vcf_index, index -> index },
+            ch_reads_mut_index.map { meta, reads, vcf, vcf_index, index -> vcf },
+            ch_reads_mut_index.map { meta, reads, vcf, vcf_index, index -> vcf_index }
         )
     }
 
@@ -249,13 +274,27 @@ workflow CDNASEQ {
     ch_versions = ch_versions.mix(AGGREGATE_SJ_P1.out.versions.first())
 
     //
+    // STAR Index for P2 with aggregated junctions
+    //
+    STAR_INDEX.alias('STAR_INDEX_P2') (
+        reference_fasta,
+        reference_gtf,
+        params.sjdb_overhang,
+        "p2_index_with_junctions",
+        ch_filtered_sj
+    )
+    ch_star_index_p2 = STAR_INDEX.alias('STAR_INDEX_P2').out.index
+
+    //
     // STAR Second Pass Alignment
     //
     STAR_ALIGN_P2 (
-        ch_trimmed_reads,
-        ch_star_index,
+        ch_reads_with_vcf_p1_ref.map { meta, reads, vcf, vcf_index -> [meta, reads] },
+        ch_star_index_p2,
         reference_gtf,
-        ch_filtered_sj
+        ch_filtered_sj,
+        ch_reads_with_vcf_p1_ref.map { meta, reads, vcf, vcf_index -> vcf },
+        ch_reads_with_vcf_p1_ref.map { meta, reads, vcf, vcf_index -> vcf_index }
     )
     ch_bam_sorted = STAR_ALIGN_P2.out.bam_sorted
     ch_versions = ch_versions.mix(STAR_ALIGN_P2.out.versions.first())
