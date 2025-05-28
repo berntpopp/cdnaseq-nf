@@ -1,0 +1,5 @@
+sample_id,patient_id,fastq_r1,fastq_r2,panel,vcf,strandedness
+RNA_Sample1,Patient001,data/RNA_Sample1_R1.fastq.gz,data/RNA_Sample1_R2.fastq.gz,TSC,data/Patient001.filtered.vcf.gz,forward
+RNA_Sample2,Patient002,data/RNA_Sample2_R1.fastq.gz,data/RNA_Sample2_R2.fastq.gz,ER02,,unstranded
+RNA_Sample3,Patient003,data/RNA_Sample3_R1.fastq.gz,data/RNA_Sample3_R2.fastq.gz,TSC,data/Patient003.filtered.vcf.gz,reverse
+RNA_Sample4,Patient004,data/RNA_Sample4_R1.fastq.gz,data/RNA_Sample4_R2.fastq.gz,ER02,data/Patient004.filtered.vcf.gz,unstranded
