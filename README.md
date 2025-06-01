@@ -120,6 +120,29 @@ An example samplesheet is provided in `assets/samplesheet_example.csv`.
 | `genome_build`                 | Genome build (GRCh37, GRCh38, GRCm38, etc.)   | `string`  | `GRCh38`  |          |
 | `perform_mut_ref_alignment`    | Perform alignment to mutated references        | `boolean` | `true`    |          |
 
+### STAR Indexing RAM Control (In-Workflow)
+
+For STAR indexing steps performed *within* the pipeline (e.g., for mutated references or the P2 index), you can control RAM usage with the following parameters:
+
+| Parameter                               | Description                                           | Type      | Default | Required |
+| --------------------------------------- | ----------------------------------------------------- | --------- | ------- | -------- |
+| `star_index_limit_genome_generate_ram`  | Limits RAM used by STAR for index generation (bytes) | `integer` | `null`  |          |
+| `star_index_genome_sa_sparse_d`         | STAR genomeSAsparseD parameter (higher = less RAM)   | `integer` | `null`  |          |
+| `star_index_genome_chr_bin_nbits`       | STAR genomeChrBinNbits parameter (lower = less RAM)  | `integer` | `null`  |          |
+
+**Examples:**
+- `--star_index_limit_genome_generate_ram 30000000000` (30GB RAM limit)
+- `--star_index_genome_sa_sparse_d 2` (Reduce index size and RAM requirements)
+- `--star_index_genome_chr_bin_nbits 16` (For human genome with limited RAM)
+
+These parameters are particularly useful when generating indices for full mutated genomes on systems with limited memory.
+
+**Pre-configured option:** Use the provided low-memory configuration file with `-c conf/low_memory.config` for systems with limited RAM.
+
+**Pre-configured option:** Use the provided low-memory configuration file with `-c conf/low_memory.config` for systems with limited RAM.
+
+**Pre-configured option:** Use the provided low-memory configuration file with `--c conf/low_memory.config` for systems with limited RAM.
+
 ### Analysis Options
 
 | Parameter                     | Description                              | Type      | Default | Required |
@@ -160,7 +183,7 @@ The pipeline supports multiple execution profiles:
 
 The pipeline generates various output files organized in the following structure:
 
-```
+```text
 results/
 ├── fastqc/                     # FastQC reports
 ├── trimming/                   # Trimmed reads and logs

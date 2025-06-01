@@ -15,15 +15,9 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Filter and merge STAR splice junctions"
     )
+    parser.add_argument("--input_files", nargs="+", help="Input SJ.out.tab files")
     parser.add_argument(
-        "--input_files",
-        nargs="+",
-        help="Input SJ.out.tab files"
-    )
-    parser.add_argument(
-        "--output",
-        required=True,
-        help="Output filtered junctions file"
+        "--output", required=True, help="Output filtered junctions file"
     )
     parser.add_argument(
         "--min_reads_unannotated",
@@ -39,12 +33,14 @@ def main():
 
     # Store junction information: key -> {motif, annotation, total_reads,
     # max_overhang}
-    junctions = defaultdict(lambda: {
-        "motif": "1",
-        "annotation": "0",
-        "total_reads": 0,
-        "max_overhang": "50"
-    })
+    junctions = defaultdict(
+        lambda: {
+            "motif": "1",
+            "annotation": "0",
+            "total_reads": 0,
+            "max_overhang": "50",
+        }
+    )
 
     for sj_file in args.input_files:
         with open(sj_file, "r") as f:
@@ -92,10 +88,8 @@ def main():
             annotation = int(data["annotation"])
             total_reads = data["total_reads"]
 
-            keep_junction = (
-                annotation == 1 or
-                (annotation == 0 and
-                 total_reads > args.min_reads_unannotated)
+            keep_junction = annotation == 1 or (
+                annotation == 0 and total_reads > args.min_reads_unannotated
             )
 
             if keep_junction:

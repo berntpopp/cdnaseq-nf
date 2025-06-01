@@ -312,7 +312,8 @@ Examples:
 
     parser.add_argument(
         "--gencode_version_hg19",
-        type=int,        default=19,
+        type=int,
+        default=19,
         help="GENCODE version for hg19 (default: 19)",
     )
 
@@ -565,7 +566,7 @@ Examples:
             output_dir / f"STAR_index_{genome_name}_gencode.v{gencode_version}"
         )
         star_index_key = f"star_index_{genome_name}_v{gencode_version}"
-        
+
         print(f"\n=== Starting STAR index creation ===")
         logger.info(f"Starting STAR index creation: {star_index_dir}")
 
@@ -581,21 +582,33 @@ Examples:
                 f"--genomeFastaFiles {fasta_fa}",
                 f"--sjdbGTFfile {gtf_file}",
                 f"--sjdbOverhang {args.star_sjdb_overhang}",
-                f"--runThreadN {args.star_threads}"
+                f"--runThreadN {args.star_threads}",
             ]
 
             # Add RAM limiting parameters if specified
             if args.star_limit_genome_generate_ram:
-                star_cmd_parts.append(f"--limitGenomeGenerateRAM {args.star_limit_genome_generate_ram}")
-                logger.info(f"Limiting STAR genome generation RAM to: {args.star_limit_genome_generate_ram} bytes")
+                star_cmd_parts.append(
+                    f"--limitGenomeGenerateRAM {args.star_limit_genome_generate_ram}"
+                )
+                logger.info(
+                    f"Limiting STAR genome generation RAM to: {args.star_limit_genome_generate_ram} bytes"
+                )
 
             if args.star_genome_sa_sparse_d is not None:
-                star_cmd_parts.append(f"--genomeSAsparseD {args.star_genome_sa_sparse_d}")
-                logger.info(f"Using STAR --genomeSAsparseD {args.star_genome_sa_sparse_d} for a sparser Suffix Array.")
+                star_cmd_parts.append(
+                    f"--genomeSAsparseD {args.star_genome_sa_sparse_d}"
+                )
+                logger.info(
+                    f"Using STAR --genomeSAsparseD {args.star_genome_sa_sparse_d} for a sparser Suffix Array."
+                )
 
             if args.star_genome_chr_bin_nbits is not None:
-                star_cmd_parts.append(f"--genomeChrBinNbits {args.star_genome_chr_bin_nbits}")
-                logger.info(f"Using STAR --genomeChrBinNbits {args.star_genome_chr_bin_nbits} for reduced RAM usage.")
+                star_cmd_parts.append(
+                    f"--genomeChrBinNbits {args.star_genome_chr_bin_nbits}"
+                )
+                logger.info(
+                    f"Using STAR --genomeChrBinNbits {args.star_genome_chr_bin_nbits} for reduced RAM usage."
+                )
 
             star_cmd = " \\\n    ".join(star_cmd_parts)
             run_command(star_cmd, "Building STAR index")

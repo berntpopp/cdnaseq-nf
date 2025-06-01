@@ -24,7 +24,36 @@ process STAR_INDEX {
     script:
     def args = task.ext.args ?: ''
     def sjdb_cmd = sjdb_file ? "--sjdbFileChrStartEnd $sjdb_file" : ""
-    def memory = task.memory ? "--limitGenomeGenerateRAM ${task.memory.toBytes() - 100000000}" : ""
+    
+    // RAM limiting logic
+    def limit_ram_cmd = ""
+    if (params.star_index_limit_genome_generate_ram) {
+        limit_ram_cmd = "--limitGenomeGenerateRAM ${params.star_index_limit_genome_generate_ram}"
+        log.info "[STAR_INDEX] Using --limitGenomeGenerateRAM ${params.star_index_limit_genome_generate_ram}"
+    } else if (task.memory) {
+        // Fallback to task.memory if specific param not set, ensuring it's a positive value
+        def calculated_ram = task.memory.toBytes() - 100000000 // Subtract 100MB buffer
+        if (calculated_ram > 0) {
+            limit_ram_cmd = "--limitGenomeGenerateRAM ${calculated_ram}"
+            log.info "[STAR_INDEX] Using task.memory based --limitGenomeGenerateRAM ${calculated_ram}"
+        } else {
+            log.info "[STAR_INDEX] task.memory too low for fallback RAM limit, STAR will use its default."
+        }
+    } else {
+        log.info "[STAR_INDEX] No RAM limit specified, STAR will use its default."
+    }
+
+    def sparse_sa_cmd = ""
+    if (params.star_index_genome_sa_sparse_d != null) {
+        sparse_sa_cmd = "--genomeSAsparseD ${params.star_index_genome_sa_sparse_d}"
+        log.info "[STAR_INDEX] Using --genomeSAsparseD ${params.star_index_genome_sa_sparse_d}"
+    }
+
+    def chr_bin_nbits_cmd = ""
+    if (params.star_index_genome_chr_bin_nbits != null) {
+        chr_bin_nbits_cmd = "--genomeChrBinNbits ${params.star_index_genome_chr_bin_nbits}"
+        log.info "[STAR_INDEX] Using --genomeChrBinNbits ${params.star_index_genome_chr_bin_nbits}"
+    }
     
     """
     mkdir star_index_${index_name}
@@ -37,7 +66,9 @@ process STAR_INDEX {
         --sjdbOverhang $sjdb_overhang \\
         --runThreadN $task.cpus \\
         $sjdb_cmd \\
-        $memory \\
+        $limit_ram_cmd \\
+        $sparse_sa_cmd \\
+        $chr_bin_nbits_cmd \\
         $args
 
     cat <<-END_VERSIONS > versions.yml

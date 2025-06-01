@@ -179,6 +179,42 @@ nextflow run laborberlin/cdnaseq-nf \\
     --targets_bed /path/to/targets.bed
 ```
 
+#### STAR Indexing RAM Control
+
+For systems with limited memory, you can control RAM usage during in-workflow STAR indexing (mutated references and P2 index):
+
+```bash
+# Example with 30GB RAM limit and reduced index size
+nextflow run laborberlin/cdnaseq-nf \\
+    -profile conda \\
+    --input_samplesheet samplesheet.csv \\
+    --ref_dir /path/to/references \\
+    --output_dir ./results \\
+    --star_index_limit_genome_generate_ram 30000000000 \\
+    --star_index_genome_sa_sparse_d 2 \\
+    --star_index_genome_chr_bin_nbits 16
+```
+
+**RAM Control Parameters:**
+- `--star_index_limit_genome_generate_ram`: Direct RAM limit in bytes (e.g., 30000000000 for 30GB)
+- `--star_index_genome_sa_sparse_d`: Higher values (2-3) reduce index size and RAM requirements
+- `--star_index_genome_chr_bin_nbits`: Lower values (15-16) reduce RAM for human genome
+
+These parameters are particularly useful when the pipeline generates indices for mutated references, which are full genome indices and can be memory-intensive.
+
+**Note:** These parameters control STAR indexing *within* the pipeline workflow. They are different from the RAM control options available in the standalone `bin/prepare_references.py` script, which is used for initial reference preparation.
+
+**Alternatively**, you can use the provided low-memory configuration file:
+
+```bash
+nextflow run laborberlin/cdnaseq-nf \\
+    -profile conda \\
+    -c conf/low_memory.config \\
+    --input_samplesheet samplesheet.csv \\
+    --ref_dir /path/to/references \\
+    --output_dir ./results
+```
+
 ### Resume Failed Runs
 
 If a pipeline run fails, you can resume from where it left off:
