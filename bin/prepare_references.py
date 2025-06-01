@@ -312,8 +312,7 @@ Examples:
 
     parser.add_argument(
         "--gencode_version_hg19",
-        type=int,
-        default=19,
+        type=int,        default=19,
         help="GENCODE version for hg19 (default: 19)",
     )
 
@@ -340,6 +339,27 @@ Examples:
         type=int,
         default=149,
         help="STAR sjdbOverhang parameter (default: 149, for 150bp reads)",
+    )
+
+    parser.add_argument(
+        "--star_limit_genome_generate_ram",
+        type=int,
+        default=None,
+        help="Limit RAM for STAR genome generation in bytes (e.g., 30000000000 for 30GB). If not set, STAR uses its default, which can be high. For very low RAM (e.g., <16GB for human), this is crucial.",
+    )
+
+    parser.add_argument(
+        "--star_genome_sa_sparse_d",
+        type=int,
+        default=None,
+        help="Value for STAR --genomeSAsparseD. Higher values (e.g., 2 or 3) create a sparser suffix array, reducing index size and RAM for generation/loading, but may affect sensitivity/speed. Recommended for very low RAM systems when aligning large genomes like human. STAR's default is 1.",
+    )
+
+    parser.add_argument(
+        "--star_genome_chr_bin_nbits",
+        type=int,
+        default=None,
+        help="Value for STAR --genomeChrBinNbits. Reducing this from STAR's default (e.g., to 15 or 16 for human) can save RAM during indexing, especially if --limitGenomeGenerateRAM is also used. May impact performance. Use with caution.",
     )
 
     parser.add_argument(
@@ -545,7 +565,7 @@ Examples:
             output_dir / f"STAR_index_{genome_name}_gencode.v{gencode_version}"
         )
         star_index_key = f"star_index_{genome_name}_v{gencode_version}"
-
+        
         print(f"\n=== Starting STAR index creation ===")
         logger.info(f"Starting STAR index creation: {star_index_dir}")
 
@@ -553,13 +573,31 @@ Examples:
             star_index_dir.mkdir(exist_ok=True)
             logger.info("Building STAR index (this may take a while)")
 
-            star_cmd = f"""STAR --runMode genomeGenerate \\
-                --genomeDir {star_index_dir} \\
-                --genomeFastaFiles {fasta_fa} \\
-                --sjdbGTFfile {gtf_file} \\
-                --sjdbOverhang {args.star_sjdb_overhang} \\
-                --runThreadN {args.star_threads}"""
+            # Build STAR command with basic parameters
+            star_cmd_parts = [
+                "STAR",
+                "--runMode genomeGenerate",
+                f"--genomeDir {star_index_dir}",
+                f"--genomeFastaFiles {fasta_fa}",
+                f"--sjdbGTFfile {gtf_file}",
+                f"--sjdbOverhang {args.star_sjdb_overhang}",
+                f"--runThreadN {args.star_threads}"
+            ]
 
+            # Add RAM limiting parameters if specified
+            if args.star_limit_genome_generate_ram:
+                star_cmd_parts.append(f"--limitGenomeGenerateRAM {args.star_limit_genome_generate_ram}")
+                logger.info(f"Limiting STAR genome generation RAM to: {args.star_limit_genome_generate_ram} bytes")
+
+            if args.star_genome_sa_sparse_d is not None:
+                star_cmd_parts.append(f"--genomeSAsparseD {args.star_genome_sa_sparse_d}")
+                logger.info(f"Using STAR --genomeSAsparseD {args.star_genome_sa_sparse_d} for a sparser Suffix Array.")
+
+            if args.star_genome_chr_bin_nbits is not None:
+                star_cmd_parts.append(f"--genomeChrBinNbits {args.star_genome_chr_bin_nbits}")
+                logger.info(f"Using STAR --genomeChrBinNbits {args.star_genome_chr_bin_nbits} for reduced RAM usage.")
+
+            star_cmd = " \\\n    ".join(star_cmd_parts)
             run_command(star_cmd, "Building STAR index")
 
             # Calculate MD5 checksums for key STAR index files
