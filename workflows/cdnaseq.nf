@@ -198,23 +198,36 @@ workflow CDNASEQ {
     //
     // STAR First Pass Alignment - Reference
     //
-    // Join trimmed reads with VCF information
-    ch_trimmed_reads
-        .join(
-            ch_input.map { meta, reads, vcf -> 
-                def vcf_index = vcf ? file(vcf.toString() + ".tbi", checkIfExists: false) : null
-                return [meta.id, vcf, vcf_index]
-            }, 
-            by: [0]
-        )
-        .map { meta, reads, vcf, vcf_index -> [meta, reads, vcf ?: [], vcf_index ?: []] }
-        .set { ch_reads_with_vcf_p1_ref }
+    // 1. Create a VCF info channel keyed by sample ID
+    ch_input 
+        .map { meta_orig, _, vcf_file_orig -> // reads_orig are not needed here directly
+            def vcf_idx_orig = vcf_file_orig ? file(vcf_file_orig.toString() + ".tbi", checkIfExists: false) : null
+            [ meta_orig.id, meta_orig, vcf_file_orig, vcf_idx_orig ] // [id, meta, vcf, vcf_index]
+        }
+        .set { ch_vcf_info_by_id }
 
+    // 2. Prepare ch_trimmed_reads for joining (assuming ch_trimmed_reads is [meta_obj, reads_list])
+    ch_trimmed_reads
+        .map { meta_trim, reads_trim_list -> 
+            [ meta_trim.id, meta_trim, reads_trim_list ] // [id, meta, reads_list]
+        }
+        .set { ch_trimmed_reads_by_id }
+
+    // 3. Join trimmed reads with VCF info
+    ch_trimmed_reads_by_id
+        .join( ch_vcf_info_by_id, by: [0] ) // Join on meta.id
+        .map { id, meta_trim_obj, reads_trim_list, _, vcf_file_final, vcf_idx_final -> // _ is ignored meta from vcf_info
+            // Ensure vcf_file_final and vcf_idx_final are passed as null if they were originally null
+            [ meta_trim_obj, reads_trim_list, vcf_file_final, vcf_idx_final ] 
+        }
+        .set { ch_reads_and_vcf_for_alignment } // Emits: [meta, reads_list, vcf_path_or_null, vcf_index_path_or_null]
+
+    // --- STAR_ALIGN_P1_REF ---
     STAR_ALIGN_P1_REF (
-        ch_reads_with_vcf_p1_ref.map { meta, reads, vcf, vcf_index -> [meta, reads] },
+        ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> [meta, reads_list] }, // meta, reads
         ch_star_index_std,
-        ch_reads_with_vcf_p1_ref.map { meta, reads, vcf, vcf_index -> vcf },
-        ch_reads_with_vcf_p1_ref.map { meta, reads, vcf, vcf_index -> vcf_index }
+        ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> vcf_file ?: [] },       // vcf
+        ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> vcf_idx_file ?: [] }    // vcf_index
     )
     ch_versions = ch_versions.mix(STAR_ALIGN_P1_REF.out.versions.first())
 
@@ -236,22 +249,26 @@ workflow CDNASEQ {
         )
         ch_star_indices_mut = STAR_INDEX.alias('STAR_INDEX_MUT').out.index
 
-        // Align to mutated reference - only for samples with VCF
-        ch_trimmed_reads
-            .join(ch_input.map { meta, reads, vcf -> [meta.id, vcf] }, by: [0])
-            .filter { meta, reads, vcf -> vcf != null }
-            .map { meta, reads, vcf -> 
-                def vcf_index = file(vcf.toString() + ".tbi", checkIfExists: false)
-                return [meta, reads, vcf, vcf_index]
+        // --- STAR_ALIGN_P1_MUT ---
+        // ch_star_indices_mut is assumed to be [meta_patient_obj_from_mutref, mut_star_index_path]
+        // We need to join based on patient_id
+        
+        ch_reads_and_vcf_for_alignment // [meta_rna, reads_list, vcf_file, vcf_idx_file]
+            .map { meta_rna, reads_list, vcf, vcf_idx -> 
+                [meta_rna.patient_id, meta_rna, reads_list, vcf, vcf_idx] // Key by patient_id
             }
-            .combine(ch_star_indices_mut)
-            .set { ch_reads_mut_index }
+            .join( ch_star_indices_mut.map { meta_mut_idx, mut_idx_path -> [meta_mut_idx.patient_id, mut_idx_path] } , by: [0] ) // Join on patient_id
+            .map { patient_id, meta_rna_obj, reads_list, vcf_file, vcf_idx_file, mut_idx_path ->
+                 // Structure for STAR_ALIGN_P1_MUT: [meta, reads, index, vcf_optional, vcf_index_optional]
+                [ meta_rna_obj, reads_list, mut_idx_path, vcf_file, vcf_idx_file ]
+            }
+            .set { ch_for_star_align_p1_mut_input }
 
         STAR_ALIGN_P1_MUT (
-            ch_reads_mut_index.map { meta, reads, vcf, vcf_index, index -> [meta, reads] },
-            ch_reads_mut_index.map { meta, reads, vcf, vcf_index, index -> index },
-            ch_reads_mut_index.map { meta, reads, vcf, vcf_index, index -> vcf },
-            ch_reads_mut_index.map { meta, reads, vcf, vcf_index, index -> vcf_index }
+            ch_for_star_align_p1_mut_input.map { meta, reads_list, mut_idx_path, vcf_file, vcf_idx_file -> [meta, reads_list] }, // meta, reads
+            ch_for_star_align_p1_mut_input.map { meta, reads_list, mut_idx_path, vcf_file, vcf_idx_file -> mut_idx_path },       // index (mutated)
+            ch_for_star_align_p1_mut_input.map { meta, reads_list, mut_idx_path, vcf_file, vcf_idx_file -> vcf_file ?: [] },     // vcf
+            ch_for_star_align_p1_mut_input.map { meta, reads_list, mut_idx_path, vcf_file, vcf_idx_file -> vcf_idx_file ?: [] }  // vcf_index
         )
     }
 
@@ -289,12 +306,12 @@ workflow CDNASEQ {
     // STAR Second Pass Alignment
     //
     STAR_ALIGN_P2 (
-        ch_reads_with_vcf_p1_ref.map { meta, reads, vcf, vcf_index -> [meta, reads] },
+        ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> [meta, reads_list] }, // meta, reads
         ch_star_index_p2,
         reference_gtf,
         ch_filtered_sj,
-        ch_reads_with_vcf_p1_ref.map { meta, reads, vcf, vcf_index -> vcf },
-        ch_reads_with_vcf_p1_ref.map { meta, reads, vcf, vcf_index -> vcf_index }
+        ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> vcf_file ?: [] },     // vcf_optional
+        ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> vcf_idx_file ?: [] }  // vcf_index_optional
     )
     ch_bam_sorted = STAR_ALIGN_P2.out.bam_sorted
     ch_versions = ch_versions.mix(STAR_ALIGN_P2.out.versions.first())
