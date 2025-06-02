@@ -38,22 +38,36 @@ process STAR_INDEX {
             log.info "[STAR_INDEX] Using task.memory based --limitGenomeGenerateRAM ${calculated_ram}"
         } else {
             log.info "[STAR_INDEX] task.memory too low for fallback RAM limit, STAR will use its default."
-        }
-    } else {
+        }    } else {
         log.info "[STAR_INDEX] No RAM limit specified, STAR will use its default."
     }
-
+    
     def sparse_sa_cmd = ""
     if (params.star_index_genome_sa_sparse_d != null) {
         sparse_sa_cmd = "--genomeSAsparseD ${params.star_index_genome_sa_sparse_d}"
         log.info "[STAR_INDEX] Using --genomeSAsparseD ${params.star_index_genome_sa_sparse_d}"
     }
-
+    
     def chr_bin_nbits_cmd = ""
     if (params.star_index_genome_chr_bin_nbits != null) {
         chr_bin_nbits_cmd = "--genomeChrBinNbits ${params.star_index_genome_chr_bin_nbits}"
         log.info "[STAR_INDEX] Using --genomeChrBinNbits ${params.star_index_genome_chr_bin_nbits}"
-    }    """
+    }
+    
+    // Custom temporary directory handling for FIFO file compatibility
+    def temp_dir_cmd = ""
+    if (params.star_temp_dir) {
+        temp_dir_cmd = "--outTmpDir ${params.star_temp_dir}"
+    }
+    
+    """
+    # Create custom temporary directory if specified
+    if [[ "${params.star_temp_dir}" != "null" && -n "${params.star_temp_dir}" ]]; then
+        mkdir -p ${params.star_temp_dir}
+        chmod 755 ${params.star_temp_dir}
+        echo "Using custom STAR temporary directory: ${params.star_temp_dir}"
+    fi
+    
     mkdir star_index_${index_name}
 
     STAR \\
@@ -67,6 +81,7 @@ process STAR_INDEX {
         $limit_ram_cmd \\
         $sparse_sa_cmd \\
         $chr_bin_nbits_cmd \\
+        $temp_dir_cmd \\
         $args
 
     cat <<-END_VERSIONS > versions.yml

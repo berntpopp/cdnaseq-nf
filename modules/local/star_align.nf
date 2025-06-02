@@ -34,7 +34,20 @@ process STAR_ALIGN_P1_REF {
     def compression_cmd = reads[0].toString().endsWith('.gz') ? '--readFilesCommand zcat' : ''
     def memory = task.memory ? "--limitBAMsortRAM ${task.memory.toBytes() - 100000000}" : ""
     
+    // Custom temporary directory handling for FIFO file compatibility
+    def temp_dir_cmd = ""
+    if (params.star_temp_dir) {
+        temp_dir_cmd = "--outTmpDir ${params.star_temp_dir}"
+    }
+    
     """
+    # Create custom temporary directory if specified
+    if [[ "${params.star_temp_dir}" != "null" && -n "${params.star_temp_dir}" ]]; then
+        mkdir -p ${params.star_temp_dir}
+        chmod 755 ${params.star_temp_dir}
+        echo "Using custom STAR temporary directory: ${params.star_temp_dir}"
+    fi
+
     STAR \\
         --genomeDir $index \\
         $reads_command \\
@@ -43,6 +56,7 @@ process STAR_ALIGN_P1_REF {
         $compression_cmd \\
         $vcf_cmd \\
         $memory \\
+        $temp_dir_cmd \\
         $args
 
     # Index the BAM file
@@ -92,7 +106,20 @@ process STAR_ALIGN_P1_MUT {
     def compression_cmd = reads[0].toString().endsWith('.gz') ? '--readFilesCommand zcat' : ''
     def memory = task.memory ? "--limitBAMsortRAM ${task.memory.toBytes() - 100000000}" : ""
     
+    // Custom temporary directory handling for FIFO file compatibility
+    def temp_dir_cmd = ""
+    if (params.star_temp_dir) {
+        temp_dir_cmd = "--outTmpDir ${params.star_temp_dir}"
+    }
+    
     """
+    # Create custom temporary directory if specified
+    if [[ "${params.star_temp_dir}" != "null" && -n "${params.star_temp_dir}" ]]; then
+        mkdir -p ${params.star_temp_dir}
+        chmod 755 ${params.star_temp_dir}
+        echo "Using custom STAR temporary directory: ${params.star_temp_dir}"
+    fi
+
     STAR \\
         --genomeDir $index \\
         $reads_command \\
@@ -101,6 +128,7 @@ process STAR_ALIGN_P1_MUT {
         $compression_cmd \\
         $vcf_cmd \\
         $memory \\
+        $temp_dir_cmd \\
         $args
 
     # Index the BAM file
@@ -169,8 +197,7 @@ process STAR_ALIGN_P2 {
     output:
     tuple val(meta), path("*.Aligned.sortedByCoord.out.bam"), emit: bam_sorted
     tuple val(meta), path("*.SJ.out.tab")                   , emit: sj_tab
-    tuple val(meta), path("*.Log.final.out")                , emit: log_final
-    tuple val(meta), path("*.Log.out")                      , emit: log_out
+    tuple val(meta), path("*.Log.final.out")                , emit: log_final    tuple val(meta), path("*.Log.out")                      , emit: log_out
     tuple val(meta), path("*.Log.progress.out")             , emit: log_progress
     path  "versions.yml"                                     , emit: versions
 
@@ -188,7 +215,20 @@ process STAR_ALIGN_P2 {
     def sj_cmd = sj_filtered ? "--sjdbFileChrStartEnd $sj_filtered" : ""
     def vcf_cmd = vcf_optional ? "--varVCFfile $vcf_optional" : ""
     
+    // Custom temporary directory handling for FIFO file compatibility
+    def temp_dir_cmd = ""
+    if (params.star_temp_dir) {
+        temp_dir_cmd = "--outTmpDir ${params.star_temp_dir}"
+    }
+    
     """
+    # Create custom temporary directory if specified
+    if [[ "${params.star_temp_dir}" != "null" && -n "${params.star_temp_dir}" ]]; then
+        mkdir -p ${params.star_temp_dir}
+        chmod 755 ${params.star_temp_dir}
+        echo "Using custom STAR temporary directory: ${params.star_temp_dir}"
+    fi
+
     STAR \\
         --genomeDir $index \\
         $reads_command \\
@@ -199,6 +239,7 @@ process STAR_ALIGN_P2 {
         $compression_cmd \\
         $vcf_cmd \\
         $memory \\
+        $temp_dir_cmd \\
         $args
 
     # Index the BAM file
