@@ -4,13 +4,14 @@
 
 import nextflow.Nextflow
 import groovy.text.SimpleTemplateEngine
+import groovy.json.JsonBuilder
 
 class WorkflowCdnaseq {
 
     //
     // Check and validate parameters
     //
-    public static void initialise(params, log) {
+    public static void initialise(workflow, params, log) {
         genomeExistsError(params, log)
 
         if (!params.fasta) {
@@ -50,7 +51,7 @@ class WorkflowCdnaseq {
         summary['parameters']['max_cpus'] = params.max_cpus
         summary['parameters']['max_time'] = params.max_time
         
-        return groovy.json.JsonBuilder(summary).toPrettyString()
+        return new JsonBuilder(summary).toPrettyString()
     }
 
     //
@@ -87,7 +88,9 @@ class WorkflowCdnaseq {
     // Generate methods description template
     //
     private static String methodsDescriptionTemplate() {
-        return """
+        // In a static context, we return a template that will be processed later
+        // with the workflow and params objects
+        return '''
         <h4>Methods</h4>
         <h3>Data processing</h3>
         <p>Raw sequencing reads were processed using the cdnaseq-nf pipeline (version ${workflow.manifest.version}). 
@@ -101,6 +104,6 @@ class WorkflowCdnaseq {
         ${!params.skip_quantification ? "Gene expression quantification was performed using featureCounts." : ""}
         All quality control metrics were summarized using MultiQC (v${params.versions?.multiqc ?: 'N/A'}).
         </p>
-        """
+        '''
     }
 }

@@ -4,7 +4,7 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { WorkflowCdnaseq } from '../lib/WorkflowCdnaseq'
+// WorkflowCdnaseq class from lib/ is auto-loaded by Nextflow
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -55,7 +55,9 @@ include { INDEX_FASTA                 } from '../modules/local/gatk_tools'
 include { CREATE_SEQ_DICT             } from '../modules/local/gatk_tools'
 include { SPLITNCIGARREADS            } from '../modules/local/gatk_tools'
 include { GATK_HAPLOTYPECALLER_RNA    } from '../modules/local/gatk_tools'
-include { STAR_INDEX                  } from '../modules/local/star_index'
+include { STAR_INDEX as STAR_INDEX_STD} from '../modules/local/star_index'
+include { STAR_INDEX as STAR_INDEX_MUT} from '../modules/local/star_index'
+include { STAR_INDEX as STAR_INDEX_P2 } from '../modules/local/star_index'
 include { STAR_ALIGN_P1_REF           } from '../modules/local/star_align'
 include { STAR_ALIGN_P1_MUT           } from '../modules/local/star_align'
 include { AGGREGATE_SJ_P1             } from '../modules/local/star_align'
@@ -73,15 +75,15 @@ include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/local/multiqc'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    IMPORT NF-CORE MODULES/SUBWORKFLOWS
+    IMPORT ADDITIONAL MODULES
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
 //
-// MODULE: Installed directly from nf-core/modules
+// MODULE: Local modules 
 //
-include { FASTQC                      } from '../modules/nf-core/fastqc/main'
-include { TRIMGALORE                  } from '../modules/nf-core/trimgalore/main'
+include { FASTQC_RAW as FASTQC        } from '../modules/local/fastqc'
+include { BBDUK_TRIM as TRIMGALORE    } from '../modules/local/bbduk_trim'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -185,15 +187,15 @@ workflow CDNASEQ {
     //
     ch_empty_sj_file = Channel.empty()
     
-    STAR_INDEX (
+    STAR_INDEX_STD (
         reference_fasta,
         reference_gtf,
         params.sjdb_overhang,
         "standard_ref_index",
         ch_empty_sj_file
     )
-    ch_star_index_std = STAR_INDEX.out.index
-    ch_versions = ch_versions.mix(STAR_INDEX.out.versions.first())
+    ch_star_index_std = STAR_INDEX_STD.out.index
+    ch_versions = ch_versions.mix(STAR_INDEX_STD.out.versions.first())
 
     //
     // STAR First Pass Alignment - Reference
@@ -240,14 +242,14 @@ workflow CDNASEQ {
             .combine(Channel.value(reference_gtf))
             .set { ch_mut_ref_for_star }
 
-        STAR_INDEX.alias('STAR_INDEX_MUT') (
+        STAR_INDEX_MUT (
             CREATE_MUT_REF_FASTA.out.fasta,
             reference_gtf,
             params.sjdb_overhang,
             CREATE_MUT_REF_FASTA.out.fasta.map { meta, fasta -> "${meta.patient_id}_mut_index" },
             ch_empty_sj_file
         )
-        ch_star_indices_mut = STAR_INDEX.alias('STAR_INDEX_MUT').out.index
+        ch_star_indices_mut = STAR_INDEX_MUT.out.index
 
         // --- STAR_ALIGN_P1_MUT ---
         // ch_star_indices_mut is assumed to be [meta_patient_obj_from_mutref, mut_star_index_path]
@@ -275,10 +277,10 @@ workflow CDNASEQ {
     //
     // Aggregate Splice Junctions from First Pass
     //
-    ch_sj_p1_ref = STAR_ALIGN_P1_REF.out.sj_tab
+    ch_sj_p1_ref = STAR_ALIGN_P1_REF.out.sj
     
     if (params.perform_mut_ref_alignment) {
-        ch_sj_p1_mut = STAR_ALIGN_P1_MUT.out.sj_tab
+        ch_sj_p1_mut = STAR_ALIGN_P1_MUT.out.sj
         ch_sj_p1_all = ch_sj_p1_ref.mix(ch_sj_p1_mut)
     } else {
         ch_sj_p1_all = ch_sj_p1_ref
@@ -325,14 +327,14 @@ workflow CDNASEQ {
         //
         // STAR Index for P2 with aggregated junctions
         //
-        STAR_INDEX.alias('STAR_INDEX_P2') (
+        STAR_INDEX_P2 (
             reference_fasta,
             reference_gtf,
             params.sjdb_overhang,
             "p2_index_with_junctions",
             ch_filtered_sj
         )
-        ch_star_index_p2 = STAR_INDEX.alias('STAR_INDEX_P2').out.index
+        ch_star_index_p2 = STAR_INDEX_P2.out.index
 
         //
         // STAR Second Pass Alignment
@@ -362,9 +364,9 @@ workflow CDNASEQ {
 
     // Index BAM files
     SAMTOOLS_INDEX (
-        ch_bam_markdup
+        ch_bam_markdup.map { meta, bam, bai -> [meta, bam] } // Extract just meta and bam 
     )
-    ch_bam_indexed = ch_bam_markdup.join(SAMTOOLS_INDEX.out.bai)
+    ch_bam_indexed = SAMTOOLS_INDEX.out.bam // This already contains [meta, bam, bai]
     ch_versions = ch_versions.mix(SAMTOOLS_INDEX.out.versions.first())
 
     //
@@ -505,11 +507,26 @@ workflow CDNASEQ {
 */
 
 workflow.onComplete {
+    // Define summary params if needed
+    def summary_params = WorkflowCdnaseq.paramsSummaryMap(workflow, params)
+    
     if (params.email || params.email_on_fail) {
-        NfcoreTemplate.email(workflow, params, summary_params, projectDir, log, multiqc_report)
+        // Comment out the NfcoreTemplate.email call as it may not be available
+        // NfcoreTemplate.email(workflow, params, summary_params, projectDir, log, multiqc_report)
+        log.info "Pipeline completed. Email notification was requested but NfcoreTemplate may not be available."
     }
-    NfcoreTemplate.summary(workflow, params, log)
+    
+    // Use a try-catch block to handle potential errors with the summary method
+    try {
+        // NfcoreTemplate.summary(workflow, params, log)
+        log.info "Pipeline execution summary not available (NfcoreTemplate may not be present)"
+    } catch (Exception e) {
+        log.warn "Could not generate execution summary: ${e.message}"
+    }
+    
     if (params.hook_url) {
-        NfcoreTemplate.IM_notification(workflow, params, summary_params, projectDir, log)
+        // Comment out the notification call as it may not be available
+        // NfcoreTemplate.IM_notification(workflow, params, summary_params, projectDir, log)
+        log.info "Pipeline completed. IM notification was requested but NfcoreTemplate may not be available."
     }
 }

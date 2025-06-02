@@ -96,7 +96,12 @@ includeConfig 'conf/modules.config'
 profiles {
     debug { process.beforeScript = 'echo $HOSTNAME' }
     conda {
-        enabled                = true
+        conda {
+            enabled         = true
+            useMamba        = true
+            createTimeout   = '1 h'
+            cacheDir        = "$HOME/.conda/envs"
+        }
         docker.enabled         = false
         singularity.enabled    = false
         podman.enabled         = false
@@ -105,8 +110,12 @@ profiles {
         includeConfig 'conf/conda.config'
     }
     mamba {
-        enabled                = true
-        useMamba               = true
+        conda {
+            enabled         = true
+            useMamba        = true
+            createTimeout   = '1 h'
+            cacheDir        = "$HOME/.conda/envs"
+        }
         docker.enabled         = false
         singularity.enabled    = false
         podman.enabled         = false
@@ -115,8 +124,10 @@ profiles {
         includeConfig 'conf/conda.config'
     }
     docker {
-        enabled                = true
-        userEmulation          = true
+        docker {
+            enabled         = true
+            userEmulation   = true
+        }
         process {
             container = 'nfcore/base:2.1'
         }
@@ -128,8 +139,10 @@ profiles {
         includeConfig 'conf/docker.config'
     }
     singularity {
-        enabled                = true
-        autoMounts             = true
+        singularity {
+            enabled         = true
+            autoMounts      = true
+        }
         process {
             container = 'docker://nfcore/base:2.1'
         }
