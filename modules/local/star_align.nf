@@ -43,8 +43,7 @@ process STAR_ALIGN_P1_REF {
     """
     # Create custom temporary directory if specified
     if [[ "${params.star_temp_dir}" != "null" && -n "${params.star_temp_dir}" ]]; then
-        mkdir -p ${params.star_temp_dir}
-        chmod 755 ${params.star_temp_dir}
+        rm -rf ${params.star_temp_dir}
         echo "Using custom STAR temporary directory: ${params.star_temp_dir}"
     fi
 
@@ -115,8 +114,7 @@ process STAR_ALIGN_P1_MUT {
     """
     # Create custom temporary directory if specified
     if [[ "${params.star_temp_dir}" != "null" && -n "${params.star_temp_dir}" ]]; then
-        mkdir -p ${params.star_temp_dir}
-        chmod 755 ${params.star_temp_dir}
+        rm -rf ${params.star_temp_dir}
         echo "Using custom STAR temporary directory: ${params.star_temp_dir}"
     fi
 
@@ -224,8 +222,7 @@ process STAR_ALIGN_P2 {
     """
     # Create custom temporary directory if specified
     if [[ "${params.star_temp_dir}" != "null" && -n "${params.star_temp_dir}" ]]; then
-        mkdir -p ${params.star_temp_dir}
-        chmod 755 ${params.star_temp_dir}
+        rm -rf ${params.star_temp_dir}
         echo "Using custom STAR temporary directory: ${params.star_temp_dir}"
     fi
 

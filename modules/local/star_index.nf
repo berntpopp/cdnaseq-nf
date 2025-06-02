@@ -63,8 +63,8 @@ process STAR_INDEX {
     """
     # Create custom temporary directory if specified
     if [[ "${params.star_temp_dir}" != "null" && -n "${params.star_temp_dir}" ]]; then
+        rm -rf ${params.star_temp_dir}
         mkdir -p ${params.star_temp_dir}
-        chmod 755 ${params.star_temp_dir}
         echo "Using custom STAR temporary directory: ${params.star_temp_dir}"
     fi
     
