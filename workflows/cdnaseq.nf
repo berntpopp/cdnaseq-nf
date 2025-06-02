@@ -284,37 +284,70 @@ workflow CDNASEQ {
         ch_sj_p1_all = ch_sj_p1_ref
     }
 
-    AGGREGATE_SJ_P1 (
-        ch_sj_p1_all.map { meta, sj -> sj }.collect()
-    )
-    ch_filtered_sj = AGGREGATE_SJ_P1.out.filtered_sj
-    ch_versions = ch_versions.mix(AGGREGATE_SJ_P1.out.versions.first())
+    // Create unified BAM channel for downstream processing
+    if (params.skip_star_second_pass) {
+        // Use first-pass alignments as final
+        // Prioritize mutated reference alignment if available, otherwise use reference alignment
+        if (params.perform_mut_ref_alignment) {
+            ch_p1_ref_bams = STAR_ALIGN_P1_REF.out.bam
+            ch_p1_mut_bams = STAR_ALIGN_P1_MUT.out.bam
+            
+            // Create a channel with all P1 BAMs, tagged by alignment type
+            ch_p1_ref_tagged = ch_p1_ref_bams.map { meta, bam -> 
+                [meta.patient_id ?: meta.id, meta, bam, 'ref'] 
+            }
+            ch_p1_mut_tagged = ch_p1_mut_bams.map { meta, bam -> 
+                [meta.patient_id ?: meta.id, meta, bam, 'mut'] 
+            }
+            
+            // Combine and select best alignment per sample
+            ch_all_p1_bams = ch_p1_ref_tagged.mix(ch_p1_mut_tagged)
+                .groupTuple(by: 0) // Group by patient_id/sample_id
+                .map { patient_id, metas, bams, types ->
+                    // Prefer mutated alignment if available, otherwise use reference
+                    def mut_idx = types.findIndexOf { it == 'mut' }
+                    def selected_idx = mut_idx >= 0 ? mut_idx : 0
+                    [metas[selected_idx], bams[selected_idx]]
+                }
+            ch_final_aligned_bams_for_processing = ch_all_p1_bams
+        } else {
+            // Only reference alignment available
+            ch_final_aligned_bams_for_processing = STAR_ALIGN_P1_REF.out.bam
+        }
+    } else {
+        // Traditional two-pass approach
+        AGGREGATE_SJ_P1 (
+            ch_sj_p1_all.map { meta, sj -> sj }.collect()
+        )
+        ch_filtered_sj = AGGREGATE_SJ_P1.out.filtered_sj
+        ch_versions = ch_versions.mix(AGGREGATE_SJ_P1.out.versions.first())
 
-    //
-    // STAR Index for P2 with aggregated junctions
-    //
-    STAR_INDEX.alias('STAR_INDEX_P2') (
-        reference_fasta,
-        reference_gtf,
-        params.sjdb_overhang,
-        "p2_index_with_junctions",
-        ch_filtered_sj
-    )
-    ch_star_index_p2 = STAR_INDEX.alias('STAR_INDEX_P2').out.index
+        //
+        // STAR Index for P2 with aggregated junctions
+        //
+        STAR_INDEX.alias('STAR_INDEX_P2') (
+            reference_fasta,
+            reference_gtf,
+            params.sjdb_overhang,
+            "p2_index_with_junctions",
+            ch_filtered_sj
+        )
+        ch_star_index_p2 = STAR_INDEX.alias('STAR_INDEX_P2').out.index
 
-    //
-    // STAR Second Pass Alignment
-    //
-    STAR_ALIGN_P2 (
-        ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> [meta, reads_list] }, // meta, reads
-        ch_star_index_p2,
-        reference_gtf,
-        ch_filtered_sj,
-        ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> vcf_file ?: [] },     // vcf_optional
-        ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> vcf_idx_file ?: [] }  // vcf_index_optional
-    )
-    ch_bam_sorted = STAR_ALIGN_P2.out.bam_sorted
-    ch_versions = ch_versions.mix(STAR_ALIGN_P2.out.versions.first())
+        //
+        // STAR Second Pass Alignment
+        //
+        STAR_ALIGN_P2 (
+            ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> [meta, reads_list] }, // meta, reads
+            ch_star_index_p2,
+            reference_gtf,
+            ch_filtered_sj,
+            ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> vcf_file ?: [] },     // vcf_optional
+            ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> vcf_idx_file ?: [] }  // vcf_index_optional
+        )
+        ch_final_aligned_bams_for_processing = STAR_ALIGN_P2.out.bam_sorted
+        ch_versions = ch_versions.mix(STAR_ALIGN_P2.out.versions.first())
+    }
 
     //
     // BAM Processing Pipeline
@@ -322,7 +355,7 @@ workflow CDNASEQ {
     
     // Mark duplicates
     MARK_DUPLICATES_PICARD (
-        ch_bam_sorted
+        ch_final_aligned_bams_for_processing
     )
     ch_bam_markdup = MARK_DUPLICATES_PICARD.out.bam
     ch_versions = ch_versions.mix(MARK_DUPLICATES_PICARD.out.versions.first())
@@ -429,7 +462,16 @@ workflow CDNASEQ {
             ch_multiqc_files = ch_multiqc_files.mix(BBDUK_TRIM.out.log.collect{it[1]}.ifEmpty([]))
         }
         
-        ch_multiqc_files = ch_multiqc_files.mix(STAR_ALIGN_P2.out.log_final.collect{it[1]}.ifEmpty([]))
+        // Include STAR alignment logs based on skip_star_second_pass setting
+        if (params.skip_star_second_pass) {
+            ch_multiqc_files = ch_multiqc_files.mix(STAR_ALIGN_P1_REF.out.log_final.collect{it[1]}.ifEmpty([]))
+            if (params.perform_mut_ref_alignment) {
+                ch_multiqc_files = ch_multiqc_files.mix(STAR_ALIGN_P1_MUT.out.log_final.collect{it[1]}.ifEmpty([]))
+            }
+        } else {
+            ch_multiqc_files = ch_multiqc_files.mix(STAR_ALIGN_P2.out.log_final.collect{it[1]}.ifEmpty([]))
+        }
+        
         ch_multiqc_files = ch_multiqc_files.mix(MARK_DUPLICATES_PICARD.out.metrics.collect{it[1]}.ifEmpty([]))
         
         if (!params.skip_quantification) {

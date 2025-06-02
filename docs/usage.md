@@ -89,7 +89,7 @@ gatk CreateSequenceDictionary \\
 ### Basic Command
 
 ```bash
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile conda \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
@@ -100,7 +100,7 @@ nextflow run laborberlin/cdnaseq-nf \\
 
 #### Conda Environment
 ```bash
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile conda \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
@@ -109,7 +109,7 @@ nextflow run laborberlin/cdnaseq-nf \\
 
 #### SLURM Cluster
 ```bash
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile slurm \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
@@ -118,7 +118,7 @@ nextflow run laborberlin/cdnaseq-nf \\
 
 #### Docker
 ```bash
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile docker \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
@@ -127,7 +127,7 @@ nextflow run laborberlin/cdnaseq-nf \\
 
 #### Singularity
 ```bash
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile singularity \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
@@ -136,11 +136,25 @@ nextflow run laborberlin/cdnaseq-nf \\
 
 > **Note**: Docker and Singularity profiles use pre-built container images with default fallback containers (`nfcore/base:2.1`). Individual processes have specific containers defined in their modules. You can customize container settings in `conf/docker.config` or `conf/singularity.config`.
 
-### Advanced Usage
+### Minimal First-Pass Alignment
+For faster analysis focusing only on QC, trimming, and first-pass alignments:
+
+```bash
+nextflow run berntpopp/cdnaseq-nf \\
+    -profile conda,minimal_alignment \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
     --output_dir ./results
 ```
+
+This profile:
+
+- Skips the second-pass STAR alignment (`skip_star_second_pass = true`)
+- Performs FastQC and trimming
+- Generates first-pass STAR alignments (P1-Ref and conditionally P1-Mut if VCFs provided)
+- Skips most downstream analyses (variant calling, detailed splicing analysis, quantification)
+- Includes a final MultiQC report
+- Uses reduced resource allocation suitable for smaller systems
 
 > **Note**: Docker and Singularity profiles use pre-built container images with default fallback containers (`nfcore/base:2.1`). Individual processes have specific containers defined in their modules. You can customize container settings in `conf/docker.config` or `conf/singularity.config`.
 
@@ -150,15 +164,23 @@ nextflow run laborberlin/cdnaseq-nf \\
 
 ```bash
 # Skip adapter trimming
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile conda \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
     --output_dir ./results \\
     --skip_trimming
 
+# Skip second-pass STAR alignment (use first-pass only)
+nextflow run berntpopp/cdnaseq-nf \\
+    -profile conda \\
+    --input_samplesheet samplesheet.csv \\
+    --ref_dir /path/to/references \\
+    --output_dir ./results \\
+    --skip_star_second_pass
+
 # Skip variant calling
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile conda \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
@@ -166,7 +188,7 @@ nextflow run laborberlin/cdnaseq-nf \\
     --skip_variant_calling
 
 # Skip splicing analysis
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile conda \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
@@ -177,7 +199,7 @@ nextflow run laborberlin/cdnaseq-nf \\
 #### Custom Resource Limits
 
 ```bash
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile conda \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
@@ -190,7 +212,7 @@ nextflow run laborberlin/cdnaseq-nf \\
 #### Variant Calling with Target Regions
 
 ```bash
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile conda \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
@@ -198,13 +220,43 @@ nextflow run laborberlin/cdnaseq-nf \\
     --targets_bed /path/to/targets.bed
 ```
 
+#### Output Publishing Options
+
+By default, the pipeline copies output files to the results directory. You can change this behavior using the `publish_dir_mode` parameter:
+
+```bash
+# Use symbolic links instead of copying (faster, saves disk space)
+nextflow run berntpopp/cdnaseq-nf \\
+    -profile conda \\
+    --input_samplesheet samplesheet.csv \\
+    --ref_dir /path/to/references \\
+    --output_dir ./results \\
+    --publish_dir_mode symlink
+
+# Use hard links (fast, saves space, but files must be on same filesystem)
+nextflow run berntpopp/cdnaseq-nf \\
+    -profile conda \\
+    --input_samplesheet samplesheet.csv \\
+    --ref_dir /path/to/references \\
+    --output_dir ./results \\
+    --publish_dir_mode link
+```
+
+**Available options:**
+- `copy` (default): Copy files to output directory
+- `symlink`: Create symbolic links (saves disk space)
+- `link`: Create hard links (saves space, same filesystem only)  
+- `move`: Move files to output directory
+- `rellink`: Create relative symbolic links
+- `copyNoFollow`: Copy files without following symbolic links
+
 #### STAR Indexing RAM Control
 
 For systems with limited memory, you can control RAM usage during in-workflow STAR indexing (mutated references and P2 index):
 
 ```bash
 # Example with 30GB RAM limit and reduced index size
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile conda \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
@@ -226,7 +278,7 @@ These parameters are particularly useful when the pipeline generates indices for
 **Alternatively**, you can use the provided low-memory configuration file:
 
 ```bash
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile conda \\
     -c conf/low_memory.config \\
     --input_samplesheet samplesheet.csv \\
@@ -239,7 +291,7 @@ nextflow run laborberlin/cdnaseq-nf \\
 If a pipeline run fails, you can resume from where it left off:
 
 ```bash
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile conda \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
@@ -280,7 +332,7 @@ params {
 Use the custom configuration:
 
 ```bash
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile conda \\
     -c custom.config \\
     --input_samplesheet samplesheet.csv \\
@@ -293,7 +345,7 @@ nextflow run laborberlin/cdnaseq-nf \\
 Run the pipeline with test data:
 
 ```bash
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile test,conda \\
     --output_dir ./test_results
 ```
@@ -312,7 +364,7 @@ nextflow run laborberlin/cdnaseq-nf \\
 Run with debug information:
 
 ```bash
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile conda \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
@@ -327,7 +379,7 @@ nextflow run laborberlin/cdnaseq-nf \\
 Monitor resource usage:
 
 ```bash
-nextflow run laborberlin/cdnaseq-nf \\
+nextflow run berntpopp/cdnaseq-nf \\
     -profile conda \\
     --input_samplesheet samplesheet.csv \\
     --ref_dir /path/to/references \\
@@ -340,5 +392,5 @@ nextflow run laborberlin/cdnaseq-nf \\
 For a complete list of parameters, see the [README.md](../README.md#pipeline-parameters) or run:
 
 ```bash
-nextflow run laborberlin/cdnaseq-nf --help
+nextflow run berntpopp/cdnaseq-nf --help
 ```

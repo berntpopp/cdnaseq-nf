@@ -76,8 +76,16 @@ The pipeline performs:
 5. Run the pipeline:
 
    ```bash
-   nextflow run laborberlin/cdnaseq-nf \\
+   # Full pipeline with two-pass alignment
+   nextflow run berntpopp/cdnaseq-nf \\
        -profile conda \\
+       --input_samplesheet samplesheet.csv \\
+       --ref_dir /path/to/references \\
+       --output_dir ./results
+
+   # Minimal first-pass only analysis (faster, less resource intensive)
+   nextflow run berntpopp/cdnaseq-nf \\
+       -profile conda,minimal_alignment \\
        --input_samplesheet samplesheet.csv \\
        --ref_dir /path/to/references \\
        --output_dir ./results
@@ -139,16 +147,13 @@ These parameters are particularly useful when generating indices for full mutate
 
 **Pre-configured option:** Use the provided low-memory configuration file with `-c conf/low_memory.config` for systems with limited RAM.
 
-**Pre-configured option:** Use the provided low-memory configuration file with `-c conf/low_memory.config` for systems with limited RAM.
-
-**Pre-configured option:** Use the provided low-memory configuration file with `--c conf/low_memory.config` for systems with limited RAM.
-
 ### Analysis Options
 
 | Parameter                     | Description                              | Type      | Default | Required |
 | ----------------------------- | ---------------------------------------- | --------- | ------- | -------- |
 | `skip_fastqc`                 | Skip FastQC quality control              | `boolean` | `false` |          |
 | `skip_trimming`               | Skip adapter trimming                    | `boolean` | `false` |          |
+| `skip_star_second_pass`       | Skip second-pass STAR alignment          | `boolean` | `false` |          |
 | `skip_variant_calling`        | Skip GATK variant calling                | `boolean` | `false` |          |
 | `skip_splicing_analysis`      | Skip splicing analysis                   | `boolean` | `false` |          |
 | `skip_quantification`         | Skip gene expression quantification     | `boolean` | `false` |          |
@@ -160,6 +165,7 @@ These parameters are particularly useful when generating indices for full mutate
 | ---------------- | ------------------------------------- | -------- | ---------------------------------- | -------- |
 | `targets_bed`    | BED file with target regions for variant calling | `string` |                                    |          |
 | `adapter_fasta`  | FASTA file with adapter sequences     | `string` | `$projectDir/assets/adapters.fa`   |          |
+| `publish_dir_mode` | Method for publishing output files (copy, link, symlink, move) | `string` | `copy` |          |
 
 ### Resource Limits
 
@@ -191,10 +197,10 @@ The `docker` and `singularity` profiles are now fully functional with:
 Example usage:
 ```bash
 # Docker
-nextflow run laborberlin/cdnaseq-nf -profile docker --input_samplesheet samplesheet.csv --ref_dir /path/to/refs
+nextflow run berntpopp/cdnaseq-nf -profile docker --input_samplesheet samplesheet.csv --ref_dir /path/to/refs
 
 # Singularity  
-nextflow run laborberlin/cdnaseq-nf -profile singularity --input_samplesheet samplesheet.csv --ref_dir /path/to/refs
+nextflow run berntpopp/cdnaseq-nf -profile singularity --input_samplesheet samplesheet.csv --ref_dir /path/to/refs
 ```
 
 ## Output
@@ -241,8 +247,8 @@ This pipeline was developed by the Labor Berlin team for comprehensive RNA-seq s
 For support, please:
 
 1. Check the [documentation](docs/)
-2. Search existing [issues](https://github.com/laborberlin/cdnaseq-nf/issues)
-3. Create a new [issue](https://github.com/laborberlin/cdnaseq-nf/issues/new) with detailed information
+2. Search existing [issues](https://github.com/berntpopp/cdnaseq-nf/issues)
+3. Create a new [issue](https://github.com/berntpopp/cdnaseq-nf/issues/new) with detailed information
 
 ## License
 

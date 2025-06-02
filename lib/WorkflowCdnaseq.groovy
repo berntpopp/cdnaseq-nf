@@ -95,7 +95,7 @@ class WorkflowCdnaseq {
         ${!params.skip_trimming ? "and adapter trimming was conducted using BBDuk from BBTools suite" : ""}.
         Reads were aligned to the ${params.genome_build ?: 'reference'} genome using STAR aligner 
         ${params.perform_mut_ref_alignment ? "including alignment to patient-specific mutated references generated from provided VCF files" : ""}.
-        A two-pass alignment strategy was employed where splice junctions identified in the first pass were used to guide the second pass alignment.
+        ${!params.skip_star_second_pass ? "A two-pass alignment strategy was employed where splice junctions identified in the first pass were used to guide the second pass alignment." : "A single-pass alignment strategy was employed for fast processing."}
         ${!params.skip_variant_calling ? "Variant calling was performed using GATK HaplotypeCaller in RNA-seq mode." : ""}
         ${!params.skip_splicing_analysis ? "Splicing analysis was conducted using Regtools for junction extraction and annotation, and Portcullis for comprehensive splice site analysis." : ""}
         ${!params.skip_quantification ? "Gene expression quantification was performed using featureCounts." : ""}
