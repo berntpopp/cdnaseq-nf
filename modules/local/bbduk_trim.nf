@@ -12,7 +12,7 @@ process BBDUK_TRIM {
     path(adapters)
 
     output:
-    tuple val(meta), path("*.trim.fastq.gz"), emit: reads
+    tuple val(meta), path("*.trim*.fastq.gz"), emit: reads
     tuple val(meta), path("*.log")           , emit: log
     path  "versions.yml"                     , emit: versions
 

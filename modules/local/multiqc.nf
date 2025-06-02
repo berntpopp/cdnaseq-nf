@@ -65,5 +65,52 @@ process CUSTOM_DUMPSOFTWAREVERSIONS {
 
     script:
     def args = task.ext.args ?: ''
-    template 'dumpsoftwareversions.py'
+    """
+    #!/usr/bin/env python
+
+    # This script takes the output from various tools' versions and arranges it
+    # into a YAML file for MultiQC.
+
+    import os
+    import yaml
+    import re
+    import glob
+
+    # Collect versions from all version.yml files
+    versions_dict = {}
+    for version_file in glob.glob("$versions"):
+        with open(version_file) as f:
+            versions_dict.update(yaml.safe_load(f))
+
+    # Create a simplified version for software_versions.yml and MultiQC
+    software_versions = {}
+    for tool, version in versions_dict.items():
+        # Clean up the tool name
+        tool_clean = tool.split(':')[-1].strip()  # Remove any process prefix
+        # Handle the case where version is a dict
+        if isinstance(version, dict):
+            for subtool, subversion in version.items():
+                software_versions[subtool] = subversion
+        else:
+            software_versions[tool_clean] = version
+
+    # Write to YAML files
+    with open("software_versions.yml", "w") as f:
+        yaml.dump(software_versions, f, default_flow_style=False)
+
+    # Create MultiQC YAML with a more MultiQC-friendly structure
+    mqc_versions = {'section_name': 'Software Versions'}
+    software_mqc = {}
+    for tool, version in software_versions.items():
+        software_mqc[tool] = {'software': version}
+    mqc_versions['software_versions'] = software_mqc
+
+    with open("software_versions_mqc.yml", "w") as f:
+        yaml.dump(mqc_versions, f, default_flow_style=False)
+
+    # Output versions file for this process
+    import platform
+    with open("versions.yml", "w") as f:
+        yaml.dump({"${task.process}": {"python": platform.python_version()}}, f, default_flow_style=False)
+    """
 }
