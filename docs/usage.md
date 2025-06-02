@@ -125,6 +125,25 @@ nextflow run laborberlin/cdnaseq-nf \\
     --output_dir ./results
 ```
 
+#### Singularity
+```bash
+nextflow run laborberlin/cdnaseq-nf \\
+    -profile singularity \\
+    --input_samplesheet samplesheet.csv \\
+    --ref_dir /path/to/references \\
+    --output_dir ./results
+```
+
+> **Note**: Docker and Singularity profiles use pre-built container images with default fallback containers (`nfcore/base:2.1`). Individual processes have specific containers defined in their modules. You can customize container settings in `conf/docker.config` or `conf/singularity.config`.
+
+### Advanced Usage
+    --input_samplesheet samplesheet.csv \\
+    --ref_dir /path/to/references \\
+    --output_dir ./results
+```
+
+> **Note**: Docker and Singularity profiles use pre-built container images with default fallback containers (`nfcore/base:2.1`). Individual processes have specific containers defined in their modules. You can customize container settings in `conf/docker.config` or `conf/singularity.config`.
+
 ### Advanced Usage
 
 #### Skip Specific Steps

@@ -194,6 +194,7 @@ tower.yml
 custom_configs/
 private_data/
 local_references/
+private_output/
 
 # star tmp folders
 _STARtmp/

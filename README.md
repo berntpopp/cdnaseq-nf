@@ -174,10 +174,28 @@ These parameters are particularly useful when generating indices for full mutate
 The pipeline supports multiple execution profiles:
 
 - `conda`: Use Conda for software management
+- `mamba`: Use Mamba (faster Conda) for software management
+- `docker`: Use Docker containers with default fallback images
+- `singularity`: Use Singularity containers with default fallback images
 - `slurm`: Configure for SLURM scheduler
 - `test`: Run with test data
-- `docker`: Use Docker containers
-- `singularity`: Use Singularity containers
+
+### Container Profiles
+
+The `docker` and `singularity` profiles are now fully functional with:
+
+- **Default container images**: Uses `nfcore/base:2.1` as fallback for processes without specific containers
+- **Per-process containers**: Individual modules specify appropriate biocontainer images
+- **Customizable configurations**: Modify `conf/docker.config` or `conf/singularity.config` for advanced settings
+
+Example usage:
+```bash
+# Docker
+nextflow run laborberlin/cdnaseq-nf -profile docker --input_samplesheet samplesheet.csv --ref_dir /path/to/refs
+
+# Singularity  
+nextflow run laborberlin/cdnaseq-nf -profile singularity --input_samplesheet samplesheet.csv --ref_dir /path/to/refs
+```
 
 ## Output
 
