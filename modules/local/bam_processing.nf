@@ -11,9 +11,9 @@ process MARK_DUPLICATES_PICARD {
     tuple val(meta), path(bam)
 
     output:
-    tuple val(meta), path("*.marked.bam"), path("*.marked.bam.bai"), emit: bam
-    tuple val(meta), path("*.MarkDuplicates.metrics.txt")          , emit: metrics
-    path  "versions.yml"                                           , emit: versions
+    tuple val(meta), path("*.marked.bam"), path("*.marked.bai"), emit: bam
+    tuple val(meta), path("*.MarkDuplicates.metrics.txt")       , emit: metrics
+    path  "versions.yml"                                        , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
