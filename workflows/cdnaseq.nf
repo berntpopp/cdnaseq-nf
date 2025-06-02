@@ -82,8 +82,9 @@ include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/local/multiqc'
 //
 // MODULE: Local modules 
 //
-include { FASTQC_RAW as FASTQC        } from '../modules/local/fastqc'
-include { BBDUK_TRIM as TRIMGALORE    } from '../modules/local/bbduk_trim'
+// Remove unused aliases that can cause confusion
+// Previously: include { FASTQC_RAW as FASTQC        } from '../modules/local/fastqc'
+// Previously: include { BBDUK_TRIM as TRIMGALORE    } from '../modules/local/bbduk_trim'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
