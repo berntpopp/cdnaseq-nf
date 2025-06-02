@@ -180,23 +180,28 @@ workflow CDNASEQ {
             reference_fai,
             reference_dict
         )
-        ch_versions = ch_versions.mix(CREATE_MUT_REF_FASTA.out.versions.first())
-    }
+        ch_versions = ch_versions.mix(CREATE_MUT_REF_FASTA.out.versions.first())    }
 
     //
-    // STAR Index Creation
+    // STAR Index Creation or Use Pre-built Index
     //
     ch_empty_sj_file = Channel.empty()
     
-    STAR_INDEX_STD (
-        reference_fasta,
-        reference_gtf,
-        params.sjdb_overhang,
-        "standard_ref_index",
-        ch_empty_sj_file
-    )
-    ch_star_index_std = STAR_INDEX_STD.out.index
-    ch_versions = ch_versions.mix(STAR_INDEX_STD.out.versions.first())
+    if (params.star_index_main) {
+        // Use pre-built STAR index
+        ch_star_index_std = Channel.fromPath(params.star_index_main, checkIfExists: true)
+    } else {
+        // Create new STAR index
+        STAR_INDEX_STD (
+            reference_fasta,
+            reference_gtf,
+            params.sjdb_overhang,
+            "standard_ref_index",
+            ch_empty_sj_file
+        )
+        ch_star_index_std = STAR_INDEX_STD.out.index
+        ch_versions = ch_versions.mix(STAR_INDEX_STD.out.versions.first())
+    }
 
     //
     // STAR First Pass Alignment - Reference

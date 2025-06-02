@@ -53,9 +53,7 @@ process STAR_INDEX {
     if (params.star_index_genome_chr_bin_nbits != null) {
         chr_bin_nbits_cmd = "--genomeChrBinNbits ${params.star_index_genome_chr_bin_nbits}"
         log.info "[STAR_INDEX] Using --genomeChrBinNbits ${params.star_index_genome_chr_bin_nbits}"
-    }
-    
-    """
+    }    """
     mkdir star_index_${index_name}
 
     STAR \\
