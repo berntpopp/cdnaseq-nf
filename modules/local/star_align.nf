@@ -34,17 +34,28 @@ process STAR_ALIGN_P1_REF {
     def compression_cmd = reads[0].toString().endsWith('.gz') ? '--readFilesCommand zcat' : ''
     def memory = task.memory ? "--limitBAMsortRAM ${task.memory.toBytes() - 100000000}" : ""
     
-    // Custom temporary directory handling for FIFO file compatibility
+    // Custom temporary directory handling for FIFO file compatibility with unique subdirectory per task
+    def effective_star_temp_dir_path = ""
     def temp_dir_cmd = ""
-    if (params.star_temp_dir) {
-        temp_dir_cmd = "--outTmpDir ${params.star_temp_dir}"
+    // Check if params.star_temp_dir is not null, not empty string, and not the string "null"
+    if (params.star_temp_dir && params.star_temp_dir.toString().trim() != "" && params.star_temp_dir.toString() != "null") {
+        effective_star_temp_dir_path = "${params.star_temp_dir}/${task.process.replaceAll(':','_')}_${meta.id}_${task.attempt}"
+        temp_dir_cmd = "--outTmpDir ${effective_star_temp_dir_path}"
     }
     
     """
-    # Create custom temporary directory if specified
-    if [[ "${params.star_temp_dir}" != "null" && -n "${params.star_temp_dir}" ]]; then
-        rm -rf ${params.star_temp_dir}
-        echo "Using custom STAR temporary directory: ${params.star_temp_dir}"
+    # Prepare temporary directory path if specified
+    if [[ -n "${effective_star_temp_dir_path}" ]]; then
+        # Ensure parent directory exists
+        mkdir -p "\$(dirname "${effective_star_temp_dir_path}")"
+        
+        # Remove the specific temp directory if it already exists from a previous run
+        if [[ -d "${effective_star_temp_dir_path}" ]]; then
+            rm -rf "${effective_star_temp_dir_path}"
+            echo "Removed existing temporary directory: ${effective_star_temp_dir_path}"
+        fi
+        
+        echo "Using custom STAR temporary directory: ${effective_star_temp_dir_path}"
     fi
 
     STAR \\
@@ -60,6 +71,11 @@ process STAR_ALIGN_P1_REF {
 
     # Index the BAM file
     samtools index ${prefix}.p1ref.Aligned.sortedByCoord.out.bam
+
+    # Clean up the specific temp dir after STAR finishes, if it was created
+    if [[ -n "${effective_star_temp_dir_path}" ]]; then
+        rm -rf "${effective_star_temp_dir_path}" || echo "Warning: Could not remove temp dir ${effective_star_temp_dir_path}"
+    fi
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -105,17 +121,28 @@ process STAR_ALIGN_P1_MUT {
     def compression_cmd = reads[0].toString().endsWith('.gz') ? '--readFilesCommand zcat' : ''
     def memory = task.memory ? "--limitBAMsortRAM ${task.memory.toBytes() - 100000000}" : ""
     
-    // Custom temporary directory handling for FIFO file compatibility
+    // Custom temporary directory handling for FIFO file compatibility with unique subdirectory per task
+    def effective_star_temp_dir_path = ""
     def temp_dir_cmd = ""
-    if (params.star_temp_dir) {
-        temp_dir_cmd = "--outTmpDir ${params.star_temp_dir}"
+    // Check if params.star_temp_dir is not null, not empty string, and not the string "null"
+    if (params.star_temp_dir && params.star_temp_dir.toString().trim() != "" && params.star_temp_dir.toString() != "null") {
+        effective_star_temp_dir_path = "${params.star_temp_dir}/${task.process.replaceAll(':','_')}_${meta.id}_${task.attempt}"
+        temp_dir_cmd = "--outTmpDir ${effective_star_temp_dir_path}"
     }
     
     """
-    # Create custom temporary directory if specified
-    if [[ "${params.star_temp_dir}" != "null" && -n "${params.star_temp_dir}" ]]; then
-        rm -rf ${params.star_temp_dir}
-        echo "Using custom STAR temporary directory: ${params.star_temp_dir}"
+    # Prepare temporary directory path if specified
+    if [[ -n "${effective_star_temp_dir_path}" ]]; then
+        # Ensure parent directory exists
+        mkdir -p "\$(dirname "${effective_star_temp_dir_path}")"
+        
+        # Remove the specific temp directory if it already exists from a previous run
+        if [[ -d "${effective_star_temp_dir_path}" ]]; then
+            rm -rf "${effective_star_temp_dir_path}"
+            echo "Removed existing temporary directory: ${effective_star_temp_dir_path}"
+        fi
+        
+        echo "Using custom STAR temporary directory: ${effective_star_temp_dir_path}"
     fi
 
     STAR \\
@@ -131,6 +158,11 @@ process STAR_ALIGN_P1_MUT {
 
     # Index the BAM file
     samtools index ${prefix}.p1mut.Aligned.sortedByCoord.out.bam
+
+    # Clean up the specific temp dir after STAR finishes, if it was created
+    if [[ -n "${effective_star_temp_dir_path}" ]]; then
+        rm -rf "${effective_star_temp_dir_path}" || echo "Warning: Could not remove temp dir ${effective_star_temp_dir_path}"
+    fi
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -195,7 +227,8 @@ process STAR_ALIGN_P2 {
     output:
     tuple val(meta), path("*.Aligned.sortedByCoord.out.bam"), emit: bam_sorted
     tuple val(meta), path("*.SJ.out.tab")                   , emit: sj_tab
-    tuple val(meta), path("*.Log.final.out")                , emit: log_final    tuple val(meta), path("*.Log.out")                      , emit: log_out
+    tuple val(meta), path("*.Log.final.out")                , emit: log_final    
+    tuple val(meta), path("*.Log.out")                      , emit: log_out
     tuple val(meta), path("*.Log.progress.out")             , emit: log_progress
     path  "versions.yml"                                     , emit: versions
 
@@ -213,17 +246,28 @@ process STAR_ALIGN_P2 {
     def sj_cmd = sj_filtered ? "--sjdbFileChrStartEnd $sj_filtered" : ""
     def vcf_cmd = vcf_optional ? "--varVCFfile $vcf_optional" : ""
     
-    // Custom temporary directory handling for FIFO file compatibility
+    // Custom temporary directory handling for FIFO file compatibility with unique subdirectory per task
+    def effective_star_temp_dir_path = ""
     def temp_dir_cmd = ""
-    if (params.star_temp_dir) {
-        temp_dir_cmd = "--outTmpDir ${params.star_temp_dir}"
+    // Check if params.star_temp_dir is not null, not empty string, and not the string "null"
+    if (params.star_temp_dir && params.star_temp_dir.toString().trim() != "" && params.star_temp_dir.toString() != "null") {
+        effective_star_temp_dir_path = "${params.star_temp_dir}/${task.process.replaceAll(':','_')}_${meta.id}_${task.attempt}"
+        temp_dir_cmd = "--outTmpDir ${effective_star_temp_dir_path}"
     }
     
     """
-    # Create custom temporary directory if specified
-    if [[ "${params.star_temp_dir}" != "null" && -n "${params.star_temp_dir}" ]]; then
-        rm -rf ${params.star_temp_dir}
-        echo "Using custom STAR temporary directory: ${params.star_temp_dir}"
+    # Prepare temporary directory path if specified
+    if [[ -n "${effective_star_temp_dir_path}" ]]; then
+        # Ensure parent directory exists
+        mkdir -p "\$(dirname "${effective_star_temp_dir_path}")"
+        
+        # Remove the specific temp directory if it already exists from a previous run
+        if [[ -d "${effective_star_temp_dir_path}" ]]; then
+            rm -rf "${effective_star_temp_dir_path}"
+            echo "Removed existing temporary directory: ${effective_star_temp_dir_path}"
+        fi
+        
+        echo "Using custom STAR temporary directory: ${effective_star_temp_dir_path}"
     fi
 
     STAR \\
@@ -241,6 +285,11 @@ process STAR_ALIGN_P2 {
 
     # Index the BAM file
     samtools index ${prefix}.p2.Aligned.sortedByCoord.out.bam
+
+    # Clean up the specific temp dir after STAR finishes, if it was created
+    if [[ -n "${effective_star_temp_dir_path}" ]]; then
+        rm -rf "${effective_star_temp_dir_path}" || echo "Warning: Could not remove temp dir ${effective_star_temp_dir_path}"
+    fi
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
