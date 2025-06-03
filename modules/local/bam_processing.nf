@@ -56,10 +56,10 @@ process SAMTOOLS_INDEX {
     tag "$meta.id"
     label 'process_low'
 
-    conda "bioconda::samtools=1.18"
+    conda "bioconda::samtools=1.9"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/samtools:1.18--h50ea8bc_1' :
-        'biocontainers/samtools:1.18--h50ea8bc_1' }"
+        'https://depot.galaxyproject.org/singularity/samtools:1.9--h10a08f8_12' :
+        'biocontainers/samtools:1.9--h10a08f8_12' }"
 
     input:
     tuple val(meta), path(bam)
@@ -88,10 +88,10 @@ process SAMTOOLS_SORT {
     tag "$meta.id"
     label 'process_medium'
 
-    conda "bioconda::samtools=1.18"
+    conda "bioconda::samtools=1.9"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/samtools:1.18--h50ea8bc_1' :
-        'biocontainers/samtools:1.18--h50ea8bc_1' }"
+        'https://depot.galaxyproject.org/singularity/samtools:1.9--h10a08f8_12' :
+        'biocontainers/samtools:1.9--h10a08f8_12' }"
 
     input:
     tuple val(meta), path(bam)
