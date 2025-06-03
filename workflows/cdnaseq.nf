@@ -231,11 +231,36 @@ workflow CDNASEQ {
         .set { ch_reads_and_vcf_for_alignment } // Emits: [meta, reads_list, vcf_path_or_null, vcf_index_path_or_null]
 
     // --- STAR_ALIGN_P1_REF ---
+    // This approach ensures each sample is combined with the shared STAR index
+    // while still providing separate channels to the process as required
+
+    // First, combine sample data with the shared STAR index
+    ch_reads_and_vcf_for_alignment
+        .combine(ch_star_index_std) // This combines each sample with the single STAR index
+        .set { ch_combined_sample_and_index }
+    
+    // Prepare separate inputs for STAR_ALIGN_P1_REF process
+    ch_reads_for_star = ch_combined_sample_and_index.map { meta, reads_list, vcf_file, vcf_idx_file, index_path -> 
+        [meta, reads_list] 
+    }
+    
+    ch_index_for_star = ch_combined_sample_and_index.map { meta, reads_list, vcf_file, vcf_idx_file, index_path -> 
+        index_path 
+    }
+    
+    ch_vcf_for_star = ch_combined_sample_and_index.map { meta, reads_list, vcf_file, vcf_idx_file, index_path -> 
+        vcf_file ?: [] 
+    }
+    
+    ch_vcf_index_for_star = ch_combined_sample_and_index.map { meta, reads_list, vcf_file, vcf_idx_file, index_path -> 
+        vcf_idx_file ?: [] 
+    }
+
     STAR_ALIGN_P1_REF (
-        ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> [meta, reads_list] }, // meta, reads
-        ch_star_index_std,
-        ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> vcf_file ?: [] },       // vcf
-        ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> vcf_idx_file ?: [] }    // vcf_index
+        ch_reads_for_star,      // tuple val(meta), path(reads)
+        ch_index_for_star,     // path(index)
+        ch_vcf_for_star,       // path(vcf)
+        ch_vcf_index_for_star  // path(vcf_index)
     )
     ch_versions = ch_versions.mix(STAR_ALIGN_P1_REF.out.versions.first())
 
