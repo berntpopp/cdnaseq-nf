@@ -54,18 +54,28 @@ process STAR_INDEX {
         log.info "[STAR_INDEX] Using --genomeChrBinNbits ${params.star_index_genome_chr_bin_nbits}"
     }
     
-    // Custom temporary directory handling for FIFO file compatibility
+    // Custom temporary directory handling for FIFO file compatibility with unique subdirectory per task
+    def effective_star_temp_dir_path = ""
     def temp_dir_cmd = ""
-    if (params.star_temp_dir) {
-        temp_dir_cmd = "--outTmpDir ${params.star_temp_dir}"
+    // Check if params.star_temp_dir is not null, not empty string, and not the string "null"
+    if (params.star_temp_dir && params.star_temp_dir.toString().trim() != "" && params.star_temp_dir.toString() != "null") {
+        effective_star_temp_dir_path = "${params.star_temp_dir}/${task.process.replaceAll(':','_')}_${index_name}_${task.attempt}"
+        temp_dir_cmd = "--outTmpDir ${effective_star_temp_dir_path}"
     }
     
     """
-    # Create custom temporary directory if specified
-    if [[ "${params.star_temp_dir}" != "null" && -n "${params.star_temp_dir}" ]]; then
-        rm -rf ${params.star_temp_dir}
-        mkdir -p ${params.star_temp_dir}
-        echo "Using custom STAR temporary directory: ${params.star_temp_dir}"
+    # Prepare temporary directory path if specified
+    if [[ -n "${effective_star_temp_dir_path}" ]]; then
+        # Ensure parent directory exists
+        mkdir -p "\$(dirname "${effective_star_temp_dir_path}")"
+        
+        # Remove the specific temp directory if it already exists from a previous run
+        if [[ -d "${effective_star_temp_dir_path}" ]]; then
+            rm -rf "${effective_star_temp_dir_path}"
+            echo "Removed existing temporary directory: ${effective_star_temp_dir_path}"
+        fi
+        
+        echo "Using custom STAR temporary directory: ${effective_star_temp_dir_path}"
     fi
     
     mkdir star_index_${index_name}
@@ -83,6 +93,11 @@ process STAR_INDEX {
         $chr_bin_nbits_cmd \\
         $temp_dir_cmd \\
         $args
+
+    # Clean up the specific temp dir after STAR finishes, if it was created
+    if [[ -n "${effective_star_temp_dir_path}" ]]; then
+        rm -rf "${effective_star_temp_dir_path}" || echo "Warning: Could not remove temp dir ${effective_star_temp_dir_path}"
+    fi
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
