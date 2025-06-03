@@ -297,11 +297,28 @@ workflow CDNASEQ {
             }
             .set { ch_for_star_align_p1_mut_input }
 
+        // Create separate channels from the combined data for P1_MUT alignment
+        ch_reads_for_star_mut = ch_for_star_align_p1_mut_input.map { meta, reads_list, mut_idx_path, vcf_file, vcf_idx_file -> 
+            [meta, reads_list] 
+        }
+        
+        ch_index_for_star_mut = ch_for_star_align_p1_mut_input.map { meta, reads_list, mut_idx_path, vcf_file, vcf_idx_file -> 
+            mut_idx_path 
+        }
+        
+        ch_vcf_for_star_mut = ch_for_star_align_p1_mut_input.map { meta, reads_list, mut_idx_path, vcf_file, vcf_idx_file -> 
+            vcf_file ?: [] 
+        }
+        
+        ch_vcf_index_for_star_mut = ch_for_star_align_p1_mut_input.map { meta, reads_list, mut_idx_path, vcf_file, vcf_idx_file -> 
+            vcf_idx_file ?: [] 
+        }
+
         STAR_ALIGN_P1_MUT (
-            ch_for_star_align_p1_mut_input.map { meta, reads_list, mut_idx_path, vcf_file, vcf_idx_file -> [meta, reads_list] }, // meta, reads
-            ch_for_star_align_p1_mut_input.map { meta, reads_list, mut_idx_path, vcf_file, vcf_idx_file -> mut_idx_path },       // index (mutated)
-            ch_for_star_align_p1_mut_input.map { meta, reads_list, mut_idx_path, vcf_file, vcf_idx_file -> vcf_file ?: [] },     // vcf
-            ch_for_star_align_p1_mut_input.map { meta, reads_list, mut_idx_path, vcf_file, vcf_idx_file -> vcf_idx_file ?: [] }  // vcf_index
+            ch_reads_for_star_mut,      // tuple val(meta), path(reads)
+            ch_index_for_star_mut,     // path(index)
+            ch_vcf_for_star_mut,       // path(vcf)
+            ch_vcf_index_for_star_mut  // path(vcf_index)
         )
     }
 
@@ -370,13 +387,45 @@ workflow CDNASEQ {
         //
         // STAR Second Pass Alignment
         //
+        // Create a combined channel with per-sample data and shared resources for P2 alignment
+        ch_reads_and_vcf_for_alignment
+            .combine(ch_star_index_p2)
+            .combine(Channel.value(reference_gtf))
+            .combine(Channel.value(ch_filtered_sj))
+            .set { ch_combined_for_p2 }
+        
+        // Create separate channels from the combined data for P2 alignment
+        ch_reads_for_star_p2 = ch_combined_for_p2.map { meta, reads_list, vcf_file, vcf_idx_file, index_path, gtf_file, sj_file -> 
+            [meta, reads_list] 
+        }
+        
+        ch_index_for_star_p2 = ch_combined_for_p2.map { meta, reads_list, vcf_file, vcf_idx_file, index_path, gtf_file, sj_file -> 
+            index_path 
+        }
+        
+        ch_gtf_for_star_p2 = ch_combined_for_p2.map { meta, reads_list, vcf_file, vcf_idx_file, index_path, gtf_file, sj_file -> 
+            gtf_file 
+        }
+        
+        ch_sj_for_star_p2 = ch_combined_for_p2.map { meta, reads_list, vcf_file, vcf_idx_file, index_path, gtf_file, sj_file -> 
+            sj_file 
+        }
+        
+        ch_vcf_for_star_p2 = ch_combined_for_p2.map { meta, reads_list, vcf_file, vcf_idx_file, index_path, gtf_file, sj_file -> 
+            vcf_file ?: [] 
+        }
+        
+        ch_vcf_index_for_star_p2 = ch_combined_for_p2.map { meta, reads_list, vcf_file, vcf_idx_file, index_path, gtf_file, sj_file -> 
+            vcf_idx_file ?: [] 
+        }
+        
         STAR_ALIGN_P2 (
-            ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> [meta, reads_list] }, // meta, reads
-            ch_star_index_p2,
-            reference_gtf,
-            ch_filtered_sj,
-            ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> vcf_file ?: [] },     // vcf_optional
-            ch_reads_and_vcf_for_alignment.map { meta, reads_list, vcf_file, vcf_idx_file -> vcf_idx_file ?: [] }  // vcf_index_optional
+            ch_reads_for_star_p2,      // tuple val(meta), path(reads)
+            ch_index_for_star_p2,     // path(index)
+            ch_gtf_for_star_p2,       // path(gtf)
+            ch_sj_for_star_p2,        // path(sj_filtered)
+            ch_vcf_for_star_p2,       // path(vcf_optional)
+            ch_vcf_index_for_star_p2  // path(vcf_index_optional)
         )
         ch_final_aligned_bams_for_processing = STAR_ALIGN_P2.out.bam_sorted
         ch_versions = ch_versions.mix(STAR_ALIGN_P2.out.versions.first())
