@@ -142,8 +142,8 @@ process QUALIMAP_RNASEQ {
     task.ext.when == null || task.ext.when
 
     script:
-    def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
+    def args = task.ext.args ?: ''
     def strandedness = 'non-strand-specific'
     def memory = task.memory ? "-Xmx${task.memory.toGiga()}G" : ''
     

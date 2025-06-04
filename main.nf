@@ -14,11 +14,11 @@ nextflow.enable.dsl = 2
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    IMPORT MAIN WORKFLOW (No explicit include needed for lib/ classes)
+    IMPORT LIB CLASSES AND WORKFLOWS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-// WorkflowCdnaseq class from lib/ is auto-loaded by Nextflow
+// WorkflowCdnaseq class will be loaded automatically
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -26,7 +26,7 @@ nextflow.enable.dsl = 2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-WorkflowCdnaseq.initialise(workflow, params, log)
+// Validation will be performed inside the workflow
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -40,6 +40,10 @@ include { CDNASEQ } from './workflows/cdnaseq'
 // WORKFLOW: Run main cdnaseq-nf analysis pipeline
 //
 workflow CDNASEQ_NF {
+    // Validate parameters and print summary
+    WorkflowCdnaseq.initialise(workflow, params, log)
+    
+    // Run the main workflow
     CDNASEQ ()
 }
 

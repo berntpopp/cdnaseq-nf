@@ -20,7 +20,7 @@ process FASTQC_RAW {
 
     script:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    def _prefix = task.ext.prefix ?: "${meta.id}"
     
     """
     fastqc \\
@@ -57,7 +57,7 @@ process FASTQC_TRIM {
 
     script:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}_trimmed"
+    def _prefix = task.ext.prefix ?: "${meta.id}_trimmed"
     
     """
     fastqc \\

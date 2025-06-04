@@ -183,6 +183,7 @@ process AGGREGATE_SJ_P1 {
 
     input:
     path(sj_files)
+    path(filter_script)
 
     output:
     path("filtered_junctions.tab"), emit: filtered_sj
@@ -195,7 +196,7 @@ process AGGREGATE_SJ_P1 {
     def args = task.ext.args ?: '--min_unique_reads 3 --min_samples 1'
     
     """
-    python $projectDir/bin/filter_splice_junctions.py \\
+    python ${filter_script} \\
         --input_files ${sj_files.join(' ')} \\
         --output filtered_junctions.tab \\
         $args

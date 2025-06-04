@@ -1,0 +1,137 @@
+
+## 1. General Code Style & Formatting (`.nf` & `.groovy` files)
+
+-   **Indentation & Spacing:**
+    -   Use **4 spaces** for indentation. Do not use tabs.
+    -   Maintain consistent spacing around operators (`=`, `+`, `?`, etc.) and after commas.
+-   **Line Length:**
+    -   Strive for a maximum line length of **100-120 characters**. Break longer lines logically, often after operators or before parameters.
+-   **Comments:**
+    -   Single-line: `// This is a single-line comment`
+    -   Multi-line: `/* This is a multi-line comment */`
+    -   Write clear, concise comments for complex logic, non-obvious decisions, or the purpose of processes and channel transformations.
+    -   Document Nextflow channel structures: `// ch_sample_data: Channel of [meta, reads_list, vcf_file_or_null, vcf_idx_file_or_null]`
+-   **Groovy Specifics (`lib/` & complex `script:` blocks):**
+    -   Follow standard Java/Groovy naming conventions: `camelCase` for local variables and method names, `PascalCase` for class names.
+    -   Utilize Groovy's syntactic sugar (e.g., GStrings `"${variable}"`, list/map literals `[key: value]`, closures `{ it -> ... }`) where it enhances readability, but avoid overly obscure constructs.
+-   **Linting (Recommendation):**
+    -   Consider using `nf-core/tools lint` for pipeline structure and common Nextflow syntax checks.
+    -   For standalone Groovy files in `lib/`, standard Groovy/Java linters can be beneficial.
+
+---
+
+## 2. Project Structure & Architecture
+
+-   **Directory Organization (Current structure is good; maintain it):**
+    -   `assets/`: Static files (example sheets, MultiQC configs, adapter FASTA).
+    -   `bin/`: Executable helper scripts (Python, Bash) called by Nextflow processes.
+    -   `conf/`: All Nextflow configuration files.
+        -   `nextflow.config`: Main entry point, includes other configs, defines `params` and `profiles`.
+        -   `base.config`: Default process resources, error strategies, and common process settings.
+        -   `modules.config`: Default `publishDir` settings and `ext.args` for modules.
+        -   Profile-specific configs: `slurm.config`, `conda.config`, `docker.config`, `test.config`, `minimal_alignment.config`, `low_memory.config`.
+    -   `docs/`: User documentation (`usage.md`, `output.md`).
+    -   `lib/`: Shared Groovy classes and utility functions (e.g., `WorkflowCdnaseq.groovy`).
+    -   `modules/local/`: Pipeline-specific Nextflow DSL2 modules.
+    -   `subworkflows/local/`: Pipeline-specific Nextflow DSL2 subworkflows (create as needed).
+    -   `workflows/`: Main pipeline workflow definitions (e.g., `cdnaseq.nf`).
+-   **File Naming Conventions:**
+    -   Nextflow scripts: `snake_case.nf` (e.g., `star_align.nf`, `main.nf`, `cdnaseq.nf`).
+    -   Groovy library files: `PascalCase.groovy` (e.g., `WorkflowCdnaseq.groovy`).
+    -   Helper scripts in `bin/`: `snake_case.py`, `snake_case.sh`.
+-   **Separation of Concerns:**
+    -   **Workflow Logic:** Resides in `workflows/` (main workflow) and `subworkflows/` (reusable workflow components). Focuses on data flow orchestration and process invocation.
+    -   **Process Logic:** Encapsulated within individual module files in `modules/local/`. Each module should represent a discrete bioinformatic step or tool execution.
+    -   **Configuration:** Strictly within `nextflow.config` and the `conf/` directory. Avoid hardcoding paths or configurable settings directly in `.nf` scripts; use `params` for configurability.
+    -   **Reusable Groovy Code:** Utility functions and classes used across workflow scripts should be placed in `lib/`.
+    -   **External Scripts:** Complex scripting logic within a process's `script` block should ideally be externalized to a script in `bin/` for better maintainability, testability, and readability.
+-   **Modularity (DSL2 Principles):**
+    -   **Modules:** Design to be self-contained, reusable units with clearly defined `input` and `output` channels.
+    -   **Subworkflows:** Employ to group logically related sequences of processes, simplifying the main workflow and promoting reuse.
+    -   **nf-core/modules:** Evaluate and prefer using modules from the `nf-core/modules` repository if a well-maintained and suitable one exists, unless significant pipeline-specific customization is needed that cannot be achieved via module parameters.
+
+---
+
+## 3. Workflow & Module Design (`.nf` files)
+
+-   **Process Naming:**
+    -   Use `UPPERCASE_SNAKE_CASE` for Nextflow process names (e.g., `STAR_ALIGN_P1_REF`, `MARK_DUPLICATES_PICARD`).
+-   **Channel Naming:**
+    -   Prefix channel names with `ch_` (e.g., `ch_trimmed_reads`, `ch_star_index_std`).
+    -   Use descriptive names that indicate the channel's content or its source/destination.
+-   **Parameter Naming (`params`):**
+    -   Use `snake_case` for all pipeline parameters defined in `nextflow.config` (e.g., `params.input_samplesheet`, `params.ref_dir`, `params.star_index_main`).
+-   **Input/Output Definitions (Modules):**
+    -   Be explicit with `input:` and `output:` blocks.
+    -   Use Nextflow's input/output qualifiers: `tuple`, `val`, `path`, `env`, `each`.
+    -   Use `emit:` for named outputs to enhance clarity in the workflow script when accessing module results.
+    -   Declare inputs as `optional: true` when a process can run meaningfully without them (e.g., optional VCF files for an alignment).
+-   **`script:` Block (Modules):**
+    -   Primarily use Bash for tool execution.
+    -   Keep scripts concise and focused on the specific task of the module.
+    -   Utilize Nextflow variables for dynamic command generation: `$task.cpus`, `$task.memory.toMega()}M` or `${task.memory.toGiga()}G`, `${meta.id}`, input file paths (e.g., `$reads`, `$index`).
+    -   Always quote variables in Bash scripts (e.g., `"$my_variable"`, `"$reads"`) to handle paths/names with spaces or special characters.
+    -   Start Bash script blocks with `set -e -o pipefail` to ensure robust error catching.
+    -   For complex command-line argument construction, use Groovy string interpolation (`"""..."""`) within the `script:` block (or before it, assigning to a Groovy variable) to build command strings.
+-   **Error Handling & Retries:**
+    -   Define a sensible default `errorStrategy` (e.g., `retry` for transient errors, `finish` for others) and `maxRetries` in `conf/base.config`. These can be overridden per-process if needed.
+-   **Output Filename Consistency:**
+    -   Use `task.ext.prefix` (defined in `conf/modules.config`) or elements from the input `meta` map (e.g., `${meta.id}`) to construct consistent and informative output filenames.
+-   **Software Versioning:**
+    -   Each module wrapping a software tool should capture the tool's version and output it in a `versions.yml` file using the `cat <<-END_VERSIONS > versions.yml ... END_VERSIONS` heredoc pattern.
+    -   A dedicated process (e.g., `CUSTOM_DUMPSOFTWAREVERSIONS`) should aggregate all `versions.yml` files for the final MultiQC report and a standalone versions file.
+-   **Workflow Script Logic (`workflows/*.nf`):**
+    -   Prioritize clarity and readability. Use meaningful channel and process names.
+    -   Use comments to explain the purpose of channel operations and data flow transformations.
+    -   Employ appropriate Nextflow channel operators (`map`, `filter`, `combine`, `join`, `groupTuple`, `set`, `branch`, `ifEmpty`, `collect`, `view`, etc.) effectively.
+    -   **Shared Resources:** When a single resource (like a STAR index path from `ch_star_index_for_p1_ref_workflow`) needs to be used by multiple instances of a process (e.g., `STAR_ALIGN_P1_REF` for each sample), use `ch_per_sample_data.combine(ch_single_resource)` to correctly pair them. Then, `.map` the combined emission to fit the process's input signature if it's called with a single channel.
+
+---
+
+## 4. Parameter & Channel Management
+
+-   **Parameter Defaults:** All pipeline parameters (`params.*`) must have a default value specified in `nextflow.config` (even if `null`).
+-   **Input Validation (Workflow):**
+    -   Validate mandatory parameters (e.g., `params.input_samplesheet`, `params.ref_dir`) at the beginning of the main workflow script using `if (!params.xxx) { exit 1, "Error message" }`.
+    -   Use `checkIfExists: true` when creating file channels from `params` to ensure files exist.
+    -   Consider a dedicated process or Groovy script to validate the structure and content of the input samplesheet.
+-   **Channel Structure Documentation:**
+    -   Clearly comment the expected structure of data items within channels, especially for complex tuples, to aid understanding and debugging.
+        ```groovy
+        // Example:
+        // ch_trimmed_reads_meta_vcf: Channel emitting [meta, reads_list, vcf_file_nullable, vcf_idx_file_nullable]
+        ch_trimmed_reads_meta_vcf = BBDUK_TRIM.out.reads.join(...)
+        ```
+
+---
+
+## 5. Configuration Management (`nextflow.config` & `conf/` directory)
+
+-   **Main Configuration (`nextflow.config`):**
+    -   Primary location for defining all `params` with their default values.
+    -   Defines `profiles` for different execution environments (e.g., `conda`, `slurm`, `docker`, `test`, `minimal_alignment`).
+    -   Includes other configuration files from the `conf/` directory using `includeConfig 'conf/filename.config'`.
+    -   Sets up `manifest`, `timeline`, `report`, `trace`, and `dag` configurations. The `overwrite = true` option should be set for `timeline`, `report`, and `trace` to prevent errors on re-runs.
+-   **Base Configuration (`conf/base.config`):**
+    -   Contains default `process` scope configurations: default `executor` (if not profile-specific), `cpus`, `memory`, `time` requests, `errorStrategy`, `maxRetries`.
+    -   Uses `withLabel:label_name` selectors for general resource categories (e.g., `process_low`, `process_medium`).
+    -   Uses `withName:'PROCESS_NAME'` selectors for overrides specific to a particular process.
+-   **Profile-Specific Configurations (e.g., `conf/slurm.config`, `conf/conda.config`):**
+    -   Contain settings exclusively for that profile (e.g., `process.executor = 'slurm'`, `conda.enabled = true`).
+    -   These are included within the respective `profiles { ... }` block in `nextflow.config`.
+-   **Modules Configuration (`conf/modules.config`):**
+    -   Defines default `publishDir` options for processes/modules.
+    -   Can define default `ext.args` or other `task.ext.*` variables for modules if needed.
+-   **Scope Awareness:** Understand Nextflow's configuration scoping rules (global, params, env, process, profile) to ensure settings are applied as expected.
+-   **`check_max` Function:** Maintain the `check_max` Groovy function in `nextflow.config` to enforce global resource limits (`params.max_cpus`, `params.max_memory`, `params.max_time`).
+
+---
+
+## 6. Documentation & Readability
+
+-   **`README.md`:** Maintain a comprehensive project overview, quick start guide, explanation of core parameters, software citations, and support information.
+-   **`docs/usage.md`:** Provide detailed instructions on preparing input (samplesheet, references via `prepare_references.py`), running the pipeline with different profiles and common options.
+-   **`docs/output.md`:** Clearly describe the output directory structure and the key files generated by each step of the pipeline.
+-   **Inline Code Comments:** Use generously as described in Section 1.
+-   **`params.help`:** If not using a JSON schema for help, define a `helpMessage` in `nextflow.config` that is displayed when `nextflow run . --help` is executed.
+-   **Groovy Library Documentation (`lib/`):** Use Groovydoc/Javadoc-style comments for public classes and methods to facilitate understanding and reuse.

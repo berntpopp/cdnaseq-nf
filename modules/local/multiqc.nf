@@ -25,7 +25,7 @@ process MULTIQC {
     def args = task.ext.args ?: ''
     def config = multiqc_config ? "--config $multiqc_config" : ''
     def extra_config = extra_multiqc_config ? "--config $extra_multiqc_config" : ''
-    def logo = multiqc_logo ? /--cl-config 'custom_logo: "${multiqc_logo}"'/ : ''
+    def logo = multiqc_logo ? "--cl-config 'custom_logo: \"${multiqc_logo}\"'" : ''
     
     """
     multiqc \\
@@ -64,7 +64,7 @@ process CUSTOM_DUMPSOFTWAREVERSIONS {
     task.ext.when == null || task.ext.when
 
     script:
-    def args = task.ext.args ?: ''
+    def _args = task.ext.args ?: ''
     """
     #!/usr/bin/env python
 
