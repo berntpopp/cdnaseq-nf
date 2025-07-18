@@ -198,3 +198,10 @@ private_output/
 
 # star tmp folders
 _STARtmp/
+
+# windurf
+.windsurfrules
+
+# claude
+.claude/
+CLAUDE.md
